@@ -11,7 +11,7 @@ import com.odtheking.odin.events.LevelEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.*
-import com.odtheking.odin.utils.render.ItemStateRenderer.Companion.drawItemStack
+import com.odtheking.odin.utils.render.drawItemStack
 import com.odtheking.odin.utils.render.textDim
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import net.minecraft.world.entity.EquipmentSlot

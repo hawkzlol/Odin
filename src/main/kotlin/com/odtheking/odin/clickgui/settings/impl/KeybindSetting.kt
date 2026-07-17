@@ -26,19 +26,18 @@ class KeybindSetting(
 
     override var value: InputConstants.Key = default
     var onPress: (() -> Unit)? = null
-    private var keyNameWidth = -1f
+    private val keyNameWidth: Float
+        get() = NVGRenderer.textWidth(value.displayName.string, 16f, NVGRenderer.defaultFont)
 
     private var key: InputConstants.Key
         get() = value
         set(newKey) {
             if (newKey == value) return
             value = newKey
-            keyNameWidth = NVGRenderer.textWidth(value.displayName.string, 16f, NVGRenderer.defaultFont)
         }
 
     override fun render(x: Float, y: Float, mouseX: Float, mouseY: Float): Float {
         super.render(x, y, mouseX, mouseY)
-        if (keyNameWidth < 0) keyNameWidth = NVGRenderer.textWidth(value.displayName.string, 16f, NVGRenderer.defaultFont)
         val height = getHeight()
 
         val rectX = x + width - 20 - keyNameWidth

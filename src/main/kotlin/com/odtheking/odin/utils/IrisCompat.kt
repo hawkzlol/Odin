@@ -1,6 +1,7 @@
 package com.odtheking.odin.utils
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.odtheking.odin.utils.render.CustomRenderPipelines
 import com.odtheking.odin.utils.render.CustomRenderType
 import net.fabricmc.loader.api.FabricLoader
 import net.irisshaders.iris.api.v0.IrisApi
@@ -21,6 +22,7 @@ interface IrisCompatability {
             registerRenderType(CustomRenderType.LINES_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.LINES_TRANSLUCENT_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.QUADS_ESP, IrisShaderType.BASIC)
+            registerPipeline(CustomRenderPipelines.TEXTURED_QUADS_ESP, IrisShaderType.BASIC)
         }
     }
 }

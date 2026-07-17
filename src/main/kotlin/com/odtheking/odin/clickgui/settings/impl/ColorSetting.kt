@@ -52,10 +52,10 @@ class ColorSetting(
         set(value) {
             if (value == field) return
             field = value
-            hexWidth = NVGRenderer.textWidth(field, 16f, NVGRenderer.defaultFont)
         }
 
-    private var hexWidth = -1f
+    private val hexWidth: Float
+        get() = NVGRenderer.textWidth(hexString, 16f, NVGRenderer.defaultFont)
 
     private val textInputHandler = TextInputHandler(
         textProvider = { textInputValue },
@@ -75,11 +75,6 @@ class ColorSetting(
 
     override fun render(x: Float, y: Float, mouseX: Float, mouseY: Float): Float {
         super.render(x, y, mouseX, mouseY)
-        if (hexWidth < 0) {
-            hexString = value.hex(allowAlpha)
-            hexWidth = NVGRenderer.textWidth(hexString, 16f, NVGRenderer.defaultFont)
-        }
-
         NVGRenderer.text(name, x + 6f, y + defaultHeight / 2f - 8f, 16f, Colors.WHITE.rgba, NVGRenderer.defaultFont)
         NVGRenderer.rect(x + width - 40f, y + defaultHeight / 2f - 10f, 34f, 20f, value.rgba, 5f)
         NVGRenderer.hollowRect(x + width - 40f, y + defaultHeight / 2f - 10f, 34f, 20f, 2f, value.withAlpha(1f).darker().rgba, 5f)

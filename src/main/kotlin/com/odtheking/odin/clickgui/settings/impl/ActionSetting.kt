@@ -18,7 +18,8 @@ class ActionSetting(
 
     var action: () -> Unit by this::value
 
-    private val textWidth by lazy { NVGRenderer.textWidth(name, 16f, NVGRenderer.defaultFont) }
+    private val textWidth: Float
+        get() = NVGRenderer.textWidth(name, 16f, NVGRenderer.defaultFont)
 
     override fun render(x: Float, y: Float, mouseX: Float, mouseY: Float): Float {
         super.render(x, y, mouseX, mouseY)

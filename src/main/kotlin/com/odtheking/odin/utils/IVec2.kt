@@ -53,6 +53,7 @@ value class IVec2 private constructor(val data: Long) {
     override fun toString(): String {
         return "IVec2(x=$x, z=$z)"
     }
+
 }
 
 fun ChunkPos.toIVec2(): IVec2 {

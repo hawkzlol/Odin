@@ -13,6 +13,7 @@ import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils.isSecret
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents
@@ -33,10 +34,8 @@ object EventDispatcher {
         ClientTickEvents.START_LEVEL_TICK.register { world -> TickEvent.Start(world).postAndCatch() }
         ClientTickEvents.END_LEVEL_TICK.register { world -> TickEvent.End(world).postAndCatch() }
 
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register {
-            context -> RenderEvent.Extract(context, RenderBatchManager.renderConsumer).postAndCatch()
-            RenderEvent.Last(context).postAndCatch()
-        }
+        LevelExtractionEvents.END_EXTRACTION.register { context -> RenderBatchManager.extract(context) }
+        LevelRenderEvents.COLLECT_SUBMITS.register { context -> RenderBatchManager.submit(context) }
 
         ScreenEvents.AFTER_INIT.register { _, screen, _, _ -> ScreenEvent.Open(screen).postAndCatch() }
         ScreenEvents.BEFORE_INIT.register { _, screen, _, _ ->

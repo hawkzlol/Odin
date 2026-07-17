@@ -17,6 +17,7 @@ import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import java.util.concurrent.ConcurrentHashMap
 
 object BeamsSolver {
@@ -52,7 +53,7 @@ object BeamsSolver {
             event.drawStyledBox(AABB(positions.value.first), color, depth = true, style = beamStyle)
 
             if (beamsTracer)
-                event.drawLine(listOf(positions.key.center, positions.value.first.center), color = color, depth = false)
+                event.drawLine(listOf(Vec3.atCenterOf(positions.key), Vec3.atCenterOf(positions.value.first)), color = color, depth = false)
         }
     }
 
@@ -77,4 +78,3 @@ object BeamsSolver {
 
     private val colors = listOf(Colors.MINECRAFT_GOLD, Colors.MINECRAFT_GREEN, Colors.MINECRAFT_LIGHT_PURPLE, Colors.MINECRAFT_DARK_AQUA, Colors.MINECRAFT_YELLOW, Colors.MINECRAFT_DARK_RED, Colors.WHITE, Colors.MINECRAFT_DARK_PURPLE)
 }
-

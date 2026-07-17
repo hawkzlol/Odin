@@ -8,7 +8,6 @@ import com.odtheking.odin.events.RoomEnterEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.events.core.onReceive
 import com.odtheking.odin.features.Module
-import com.odtheking.odin.features.impl.dungeon.map.tile.RoomType
 import com.odtheking.odin.utils.Color.Companion.withAlpha
 import com.odtheking.odin.utils.Colors
 import com.odtheking.odin.utils.alert
@@ -170,13 +169,13 @@ object MapInfo : Module(
 
     private val compactScore: HudElement by HUD("Compact Score", "Displays a compact score hud with score info.") {
         if ((!DungeonUtils.inDungeons || (disableInBoss && DungeonUtils.inBoss)) && !it) return@HUD 0 to 0
+
         val score = cachedScore
         val mimicKilled = cachedMimicKilled
         val princeKilled = cachedPrinceKilled
         val batKilled = cachedBatKilled
 
         val missing = (if (mimicKilled) 0 else 2) + (if (princeKilled) 0 else 1) + (if (batKilled) 0 else 1)
-
         val scoreText = buildString {
             append("§7Score: ")
             append(colorizeScore(score))

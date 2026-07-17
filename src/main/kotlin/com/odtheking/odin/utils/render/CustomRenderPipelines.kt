@@ -3,11 +3,8 @@ package com.odtheking.odin.utils.render
 import com.mojang.blaze3d.pipeline.BlendFunction
 import com.mojang.blaze3d.pipeline.ColorTargetState
 import com.mojang.blaze3d.pipeline.RenderPipeline
-import com.mojang.blaze3d.shaders.UniformType
-import com.mojang.blaze3d.vertex.DefaultVertexFormat
-import com.mojang.blaze3d.vertex.VertexFormat
+import net.minecraft.client.renderer.BindGroupLayouts
 import net.minecraft.client.renderer.RenderPipelines
-import net.minecraft.resources.Identifier
 import java.util.*
 
 object CustomRenderPipelines {
@@ -32,14 +29,15 @@ object CustomRenderPipelines {
             .build()
     )
 
-    val PIPELINE_ROUND_RECT: RenderPipeline = RenderPipelines.register(
-        RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
-            .withLocation(Identifier.fromNamespaceAndPath("odin", "pipeline/round_rect"))
-            .withFragmentShader(Identifier.fromNamespaceAndPath("odin", "core/round_rect"))
-            .withVertexShader(Identifier.fromNamespaceAndPath("odin", "core/round_rect"))
-            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS)
-            .withUniform("u", UniformType.UNIFORM_BUFFER)
+    val TEXTURED_QUADS_ESP: RenderPipeline = RenderPipelines.register(
+        RenderPipeline.builder(RenderPipelines.ENTITY_SNIPPET)
+            .withLocation("odin/textured_quads_esp")
+            .withShaderDefine("PER_FACE_LIGHTING")
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER1)
             .withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT))
+            .withDepthStencilState(Optional.empty())
+            .withCull(false)
             .build()
     )
+
 }

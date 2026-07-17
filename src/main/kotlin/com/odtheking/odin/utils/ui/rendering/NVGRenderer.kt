@@ -1,151 +1,153 @@
 package com.odtheking.odin.utils.ui.rendering
 
 import com.odtheking.odin.OdinMod.mc
-import com.odtheking.odin.utils.Color.Companion.alpha
-import com.odtheking.odin.utils.Color.Companion.blue
-import com.odtheking.odin.utils.Color.Companion.green
-import com.odtheking.odin.utils.Color.Companion.red
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.Font as MinecraftFont
+import net.minecraft.client.gui.font.TextRenderable
+import net.minecraft.client.gui.navigation.ScreenRectangle
+import net.minecraft.client.gui.render.TextureSetup
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.FontDescription
 import net.minecraft.resources.Identifier
-import org.lwjgl.nanovg.NVGColor
-import org.lwjgl.nanovg.NVGPaint
-import org.lwjgl.nanovg.NanoSVG.*
-import org.lwjgl.nanovg.NanoVG.*
-import org.lwjgl.nanovg.NanoVGGL3.*
-import org.lwjgl.opengl.GL33C
-import org.lwjgl.stb.STBImage.stbi_load_from_memory
-import org.lwjgl.system.MemoryUtil.memAlloc
-import org.lwjgl.system.MemoryUtil.memFree
-import java.nio.ByteBuffer
+import net.minecraft.util.FormattedCharSequence
+import org.joml.Matrix3x2f
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.round
 
+/**
+ * Backend-neutral replacement for Odin's former NanoVG/OpenGL renderer.
+ *
+ * Callers still use the established immediate-looking API, but every call now executes during
+ * [GuiGraphicsExtractor] extraction and appends an immutable Minecraft GUI render state. No UI
+ * logic or lambda is deferred to the GPU drawing phase.
+ */
 object NVGRenderer {
+    private val defaultFontId = Identifier.fromNamespaceAndPath("odin", "default")
+    private val defaultFontRaster = FontRaster(defaultFontId, 20f)
 
-    private val nvgPaint = NVGPaint.malloc()
-    private val nvgColor = NVGColor.malloc()
-    private val nvgColor2: NVGColor = NVGColor.malloc()
+    val defaultFont = Font("Default", defaultFontId)
 
-    val defaultFont = Font("Default", mc.resourceManager.getResource(Identifier.parse("odin:font.ttf")).get().open())
+    private val activeFrame = ThreadLocal<Frame?>()
+    private val images = HashMap<String, Image>()
 
-    private val fontMap = HashMap<Font, NVGFont>()
-    private val fontBounds = FloatArray(4)
-
-    private val images = HashMap<Image, NVGImage>()
-
-    private var scissor: Scissor? = null
-    private var drawing: Boolean = false
-    private var vg = -1L
-
-    init {
-        vg = nvgCreate(NVG_ANTIALIAS or NVG_STENCIL_STROKES)
-        require(vg != -1L) { "Failed to initialize NanoVG" }
-    }
-
+    /** Logical-to-framebuffer scale used by Odin's existing 1080p ClickGUI layout normalization. */
     fun devicePixelRatio(): Float =
-        if (mc.window.screenWidth == 0) 1f else (mc.window.width / mc.window.screenWidth).toFloat()
+        if (mc.window.screenWidth == 0) 1f else mc.window.width.toFloat() / mc.window.screenWidth.toFloat()
 
-    fun beginFrame(width: Float, height: Float) {
-        if (drawing) throw IllegalStateException("[NVGRenderer] Already drawing, but called beginFrame")
-
-        val dpr = devicePixelRatio()
-
-        nvgBeginFrame(vg, width / dpr, height / dpr, dpr)
-        nvgTextAlign(vg, NVG_ALIGN_LEFT or NVG_ALIGN_TOP)
-        drawing = true
+    /** Execute and freeze one UI frame during screen render-state extraction. */
+    inline fun record(context: GuiGraphicsExtractor, content: () -> Unit) {
+        beginFrame(context)
+        var contentFailure: Throwable? = null
+        try {
+            content()
+        } catch (throwable: Throwable) {
+            contentFailure = throwable
+            throw throwable
+        } finally {
+            try {
+                endFrame()
+            } catch (balanceFailure: Throwable) {
+                val originalFailure = contentFailure
+                if (originalFailure != null) {
+                    originalFailure.addSuppressed(balanceFailure)
+                } else {
+                    throw balanceFailure
+                }
+            }
+        }
     }
 
-    fun endFrame() {
-        if (!drawing) throw IllegalStateException("[NVGRenderer] Not drawing, but called endFrame")
-        nvgEndFrame(vg)
-
-        drawing = false
+    @PublishedApi
+    internal fun beginFrame(context: GuiGraphicsExtractor) {
+        check(activeFrame.get() == null) { "[NVGRenderer] Nested frame recording is not supported" }
+        val window = mc.window
+        val scaleX = if (window.screenWidth == 0) 1f else window.width.toFloat() / window.screenWidth / window.guiScale
+        val scaleY = if (window.screenHeight == 0) 1f else window.height.toFloat() / window.screenHeight / window.guiScale
+        val layoutPose = Matrix3x2f(context.pose()).scale(scaleX, scaleY)
+        val viewport = ScreenRectangle(0, 0, window.guiScaledWidth, window.guiScaledHeight)
+        val initialScissor = context.scissorStack.peek()?.let { viewportClippedScissor(null, it, viewport) }
+        activeFrame.set(Frame(context, layoutPose, viewport, initialScissor))
     }
 
-    fun push() = nvgSave(vg)
+    @PublishedApi
+    internal fun endFrame() {
+        val frame = frame()
+        try {
+            check(frame.savedStates.isEmpty()) { "[NVGRenderer] Unbalanced push/pop while recording GUI state" }
+            check(frame.scissorStack.size == 1) { "[NVGRenderer] Unbalanced scissor stack while recording GUI state" }
+        } finally {
+            activeFrame.remove()
+        }
+    }
 
-    fun pop() = nvgRestore(vg)
+    fun push() {
+        val frame = frame()
+        frame.savedStates.addLast(SavedState(Matrix3x2f(frame.pose), frame.alpha))
+    }
 
-    fun scale(x: Float, y: Float) = nvgScale(vg, x, y)
+    fun pop() {
+        val frame = frame()
+        val saved = frame.savedStates.removeLastOrNull()
+            ?: throw IllegalStateException("[NVGRenderer] Transform stack underflow")
+        frame.pose.set(saved.pose)
+        frame.alpha = saved.alpha
+    }
 
-    fun translate(x: Float, y: Float) = nvgTranslate(vg, x, y)
+    fun scale(x: Float, y: Float) {
+        frame().pose.scale(x, y)
+    }
 
-    fun rotate(amount: Float) = nvgRotate(vg, amount)
+    fun translate(x: Float, y: Float) {
+        frame().pose.translate(x, y)
+    }
 
-    fun globalAlpha(amount: Float) = nvgGlobalAlpha(vg, amount.coerceIn(0f, 1f))
+    fun rotate(amount: Float) {
+        frame().pose.rotate(amount)
+    }
+
+    fun globalAlpha(amount: Float) {
+        frame().alpha = amount.coerceIn(0f, 1f)
+    }
+
+    /** Start an explicit GUI stratum to isolate independently layered command groups. */
+    fun nextLayer() {
+        frame().context.guiRenderState.nextStratum()
+    }
 
     fun pushScissor(x: Float, y: Float, w: Float, h: Float) {
-        scissor = Scissor(scissor, x, y, w + x, h + y)
-        scissor?.applyScissor()
+        val frame = frame()
+        val local = coveringScreenRectangle(x, y, x + w.coerceAtLeast(0f), y + h.coerceAtLeast(0f))
+        val transformed = local.transformMaxBounds(frame.pose)
+        val previous = frame.scissorStack.last()
+        frame.scissorStack.add(viewportClippedScissor(previous, transformed, frame.viewport))
     }
 
     fun popScissor() {
-        nvgResetScissor(vg)
-        scissor = scissor?.previous
-        scissor?.applyScissor()
+        val frame = frame()
+        check(frame.scissorStack.size > 1) { "[NVGRenderer] Scissor stack underflow" }
+        frame.scissorStack.removeLast()
     }
 
     fun line(x1: Float, y1: Float, x2: Float, y2: Float, thickness: Float, color: Int) {
-        nvgBeginPath(vg)
-        nvgMoveTo(vg, x1, y1)
-        nvgLineTo(vg, x2, y2)
-        nvgStrokeWidth(vg, thickness)
-        color(color)
-        nvgStrokeColor(vg, nvgColor)
-        nvgStroke(vg)
+        submit(UiGeometry.line(x1, y1, x2, y2, thickness, withFrameAlpha(color)))
     }
 
     fun drawHalfRoundedRect(x: Float, y: Float, w: Float, h: Float, color: Int, radius: Float, roundTop: Boolean) {
-        nvgBeginPath(vg)
-
-        if (roundTop) {
-            nvgMoveTo(vg, x, y + h)
-            nvgLineTo(vg, x + w, y + h)
-            nvgLineTo(vg, x + w, y + radius)
-            nvgArcTo(vg, x + w, y, x + w - radius, y, radius)
-            nvgLineTo(vg, x + radius, y)
-            nvgArcTo(vg, x, y, x, y + radius, radius)
-            nvgLineTo(vg, x, y + h)
-        } else {
-            nvgMoveTo(vg, x, y)
-            nvgLineTo(vg, x + w, y)
-            nvgLineTo(vg, x + w, y + h - radius)
-            nvgArcTo(vg, x + w, y + h, x + w - radius, y + h, radius)
-            nvgLineTo(vg, x + radius, y + h)
-            nvgArcTo(vg, x, y + h, x, y + h - radius, radius)
-            nvgLineTo(vg, x, y)
-        }
-
-        nvgClosePath(vg)
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgFill(vg)
+        val radii = if (roundTop) UiRadii(radius, radius, 0f, 0f) else UiRadii(0f, 0f, radius, radius)
+        submit(UiGeometry.roundedFill(x, y, x + w, y + h, radii, withFrameAlpha(color)))
     }
 
     fun rect(x: Float, y: Float, w: Float, h: Float, color: Int, radius: Float) {
-        nvgBeginPath(vg)
-        nvgRoundedRect(vg, x, y, w, h + .5f, radius)
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgFill(vg)
+        submit(UiGeometry.roundedFill(x, y, x + w, y + h + 0.5f, UiRadii.uniform(radius), withFrameAlpha(color)))
     }
 
     fun rect(x: Float, y: Float, w: Float, h: Float, color: Int) {
-        nvgBeginPath(vg)
-        nvgRect(vg, x, y, w, h + .5f)
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgFill(vg)
+        submit(UiGeometry.roundedFill(x, y, x + w, y + h + 0.5f, UiRadii.uniform(0f), withFrameAlpha(color)))
     }
 
     fun hollowRect(x: Float, y: Float, w: Float, h: Float, thickness: Float, color: Int, radius: Float) {
-        nvgBeginPath(vg)
-        nvgRoundedRect(vg, x, y, w, h, radius)
-        nvgStrokeWidth(vg, thickness)
-        nvgPathWinding(vg, NVG_HOLE)
-        color(color)
-        nvgStrokeColor(vg, nvgColor)
-        nvgStroke(vg)
+        submit(UiGeometry.roundedOutline(x, y, x + w, y + h, UiRadii.uniform(radius), thickness, withFrameAlpha(color)))
     }
 
     fun gradientRect(
@@ -156,78 +158,77 @@ object NVGRenderer {
         color1: Int,
         color2: Int,
         gradient: Gradient,
-        radius: Float
+        radius: Float,
     ) {
-        nvgBeginPath(vg)
-        nvgRoundedRect(vg, x, y, w, h, radius)
-        gradient(color1, color2, x, y, w, h, gradient)
-        nvgFillPaint(vg, nvgPaint)
-        nvgFill(vg)
+        val first = withFrameAlpha(color1)
+        val second = withFrameAlpha(color2)
+        val colors = when (gradient) {
+            Gradient.LeftToRight -> intArrayOf(first, second, second, first)
+            Gradient.TopToBottom -> intArrayOf(first, first, second, second)
+        }
+        submit(UiGeometry.roundedFill(x, y, x + w, y + h, UiRadii.uniform(radius), colors[0], colors[1], colors[2], colors[3]))
     }
 
     fun dropShadow(x: Float, y: Float, width: Float, height: Float, blur: Float, spread: Float, radius: Float) {
-        nvgRGBA(0, 0, 0, 125, nvgColor)
-        nvgRGBA(0, 0, 0, 0, nvgColor2)
-
-        nvgBoxGradient(
-            vg,
-            x - spread,
-            y - spread,
-            width + 2 * spread,
-            height + 2 * spread,
-            radius + spread,
-            blur,
-            nvgColor,
-            nvgColor2,
-            nvgPaint
-        )
-        nvgBeginPath(vg)
-        nvgRoundedRect(
-            vg,
-            x - spread - blur,
-            y - spread - blur,
-            width + 2 * spread + 2 * blur,
-            height + 2 * spread + 2 * blur,
-            radius + spread
-        )
-        nvgRoundedRect(vg, x, y, width, height, radius)
-        nvgPathWinding(vg, NVG_HOLE)
-        nvgFillPaint(vg, nvgPaint)
-        nvgFill(vg)
+        submit(UiGeometry.dropShadow(x, y, width, height, blur, spread, radius, frame().alpha))
     }
 
     fun circle(x: Float, y: Float, radius: Float, color: Int) {
-        nvgBeginPath(vg)
-        nvgCircle(vg, x, y, radius)
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgFill(vg)
+        submit(UiGeometry.circle(x, y, radius, withFrameAlpha(color)))
     }
 
     fun text(text: String, x: Float, y: Float, size: Float, color: Int, font: Font) {
-        nvgFontSize(vg, size)
-        nvgFontFaceId(vg, getFontID(font))
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgText(vg, x, y + .5f, text)
+        val drawColor = withFrameAlpha(color)
+        val atlas = atlasFor(text, font)
+        if (atlas != null) {
+            submit(atlas.layout.vertices(text, x, y, size, drawColor), atlas.textureSetup, true)
+            return
+        }
+        val raster = fontRaster(font)
+        submitMinecraftText(styled(text, raster.identifier).visualOrderText, x, y + 0.5f, size / raster.size, drawColor, false)
     }
 
     fun textShadow(text: String, x: Float, y: Float, size: Float, color: Int, font: Font) {
-        nvgFontFaceId(vg, getFontID(font))
-        nvgFontSize(vg, size)
-        color(-16777216)
-        nvgFillColor(vg, nvgColor)
-        nvgText(vg, round(x + 2f), round(y + 2f), text)
-
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgText(vg, round(x), round(y), text)
+        val drawColor = withFrameAlpha(color)
+        val shadowColor = withFrameAlpha(0xFF000000.toInt())
+        val shadowX = round(x + 2f)
+        val shadowY = round(y + 2f)
+        val foregroundX = round(x)
+        val foregroundY = round(y)
+        val atlas = atlasFor(text, font)
+        if (atlas != null) {
+            val shadow = atlas.layout.vertices(text, shadowX, shadowY, size, shadowColor)
+            val foreground = atlas.layout.vertices(text, foregroundX, foregroundY, size, drawColor)
+            submit(shadow + foreground, atlas.textureSetup, true)
+            return
+        }
+        val raster = fontRaster(font)
+        val sequence = styled(text, raster.identifier).visualOrderText
+        val scale = size / raster.size
+        submitMinecraftText(sequence, shadowX, shadowY, scale, shadowColor, false)
+        submitMinecraftText(sequence, foregroundX, foregroundY, scale, drawColor, false)
     }
 
     fun textWidth(text: String, size: Float, font: Font): Float {
-        nvgFontSize(vg, size)
-        nvgFontFaceId(vg, getFontID(font))
-        return nvgTextBounds(vg, 0f, 0f, text, fontBounds)
+        if (text.isEmpty() || size <= 0f) return 0f
+        val atlas = atlasFor(text, font)
+        if (atlas != null) return atlas.layout.width(text, size)
+        val raster = fontRaster(font)
+        return mc.font.width(styled(text, raster.identifier)) * (size / raster.size)
+    }
+
+    /**
+     * Captures one metrics backend for an entire editable run. Prefixes must not independently
+     * switch to the Inter atlas when the complete run is rendered through Minecraft's fallback.
+     */
+    internal fun textMeasurer(fullText: String, size: Float, font: Font): (String) -> Float {
+        if (size <= 0f) return { 0f }
+        val atlasLayout = if (font.identifier == defaultFontId) OdinGlyphAtlas.snapshot()?.layout else null
+        val raster = fontRaster(font)
+        val scale = size / raster.size
+        return createRunWidthMeasurer(fullText, size, atlasLayout) { candidate ->
+            if (candidate.isEmpty()) 0f else mc.font.width(styled(candidate, raster.identifier)) * scale
+        }
     }
 
     fun drawWrappedString(
@@ -238,14 +239,28 @@ object NVGRenderer {
         size: Float,
         color: Int,
         font: Font,
-        lineHeight: Float = 1f
+        lineHeight: Float = 1f,
     ) {
-        nvgFontSize(vg, size)
-        nvgFontFaceId(vg, getFontID(font))
-        nvgTextLineHeight(vg, lineHeight)
-        color(color)
-        nvgFillColor(vg, nvgColor)
-        nvgTextBox(vg, x, y, w, text)
+        if (text.isEmpty() || w <= 0f || size <= 0f) return
+        val atlas = atlasFor(text, font)
+        if (atlas != null) {
+            val advance = size * lineHeight.coerceAtLeast(0f)
+            val drawColor = withFrameAlpha(color)
+            atlas.layout.wrap(text, w, size).forEachIndexed { index, line ->
+                submit(
+                    atlas.layout.vertices(line, x, y + index * advance, size, drawColor),
+                    atlas.textureSetup,
+                    true,
+                )
+            }
+            return
+        }
+        val raster = fontRaster(font)
+        val scale = size / raster.size
+        val lines = mc.font.split(styled(text, raster.identifier), max(1, (w / scale).toInt()))
+        val advance = size * lineHeight.coerceAtLeast(0f)
+        val drawColor = withFrameAlpha(color)
+        lines.forEachIndexed { index, line -> submitMinecraftText(line, x, y + index * advance, scale, drawColor, false) }
     }
 
     fun wrappedTextBounds(
@@ -253,151 +268,137 @@ object NVGRenderer {
         w: Float,
         size: Float,
         font: Font,
-        lineHeight: Float = 1f
+        lineHeight: Float = 1f,
     ): FloatArray {
-        val bounds = FloatArray(4)
-        nvgFontSize(vg, size)
-        nvgFontFaceId(vg, getFontID(font))
-        nvgTextLineHeight(vg, lineHeight)
-        nvgTextBoxBounds(vg, 0f, 0f, w, text, bounds)
-        return bounds // [minX, minY, maxX, maxY]
-    }
-
-    fun createNVGImage(textureId: Int, textureWidth: Int, textureHeight: Int): Int {
-        GL33C.glBindTexture(GL33C.GL_TEXTURE_2D, textureId)
-        GL33C.glTexParameteri(GL33C.GL_TEXTURE_2D, GL33C.GL_TEXTURE_MIN_FILTER, GL33C.GL_NEAREST)
-        GL33C.glTexParameteri(GL33C.GL_TEXTURE_2D, GL33C.GL_TEXTURE_MAG_FILTER, GL33C.GL_NEAREST)
-        return nvglCreateImageFromHandle(vg, textureId, textureWidth, textureHeight, NVG_IMAGE_NEAREST or NVG_IMAGE_NODELETE)
-    }
-
-    fun image(image: Int, textureWidth: Int, textureHeight: Int, subX: Int, subY: Int, subW: Int, subH: Int, x: Float, y: Float, w: Float, h: Float, radius: Float) {
-        if (image == -1) return
-
-        val sx = subX.toFloat() / textureWidth
-        val sy = subY.toFloat() / textureHeight
-        val sw = subW.toFloat() / textureWidth
-        val sh = subH.toFloat() / textureHeight
-
-        val iw = w / sw
-        val ih = h / sh
-        val ix = x - iw * sx
-        val iy = y - ih * sy
-
-        nvgImagePattern(vg, ix, iy, iw, ih, 0f, image, 1f, nvgPaint)
-        nvgBeginPath(vg)
-        nvgRoundedRect(vg, x, y, w, h + .5f, radius)
-        nvgFillPaint(vg, nvgPaint)
-        nvgFill(vg)
+        if (text.isEmpty() || w <= 0f || size <= 0f) return floatArrayOf(0f, 0f, 0f, 0f)
+        val atlas = atlasFor(text, font)
+        if (atlas != null) {
+            val lines = atlas.layout.wrap(text, w, size)
+            val width = lines.maxOfOrNull { atlas.layout.width(it, size) } ?: 0f
+            return floatArrayOf(0f, 0f, min(w, width), lines.size * size * lineHeight.coerceAtLeast(0f))
+        }
+        val raster = fontRaster(font)
+        val scale = size / raster.size
+        val lines = mc.font.split(styled(text, raster.identifier), max(1, (w / scale).toInt()))
+        val width = lines.maxOfOrNull { mc.font.width(it) * scale } ?: 0f
+        return floatArrayOf(0f, 0f, min(w, width), lines.size * size * lineHeight.coerceAtLeast(0f))
     }
 
     fun image(image: Image, x: Float, y: Float, w: Float, h: Float, radius: Float) {
-        nvgImagePattern(vg, x, y, w, h, 0f, getImage(image), 1f, nvgPaint)
-        nvgBeginPath(vg)
-        nvgRoundedRect(vg, x, y, w, h + .5f, radius)
-        nvgFillPaint(vg, nvgPaint)
-        nvgFill(vg)
+        val texture = mc.textureManager.getTexture(image.identifier)
+        val vertices = UiGeometry.roundedFill(
+            x,
+            y,
+            x + w,
+            y + h + 0.5f,
+            UiRadii.uniform(radius),
+            withFrameAlpha(-1),
+            textured = true,
+        )
+        submit(vertices, TextureSetup.singleTexture(texture.textureView, texture.sampler), true)
     }
 
-    fun image(image: Image, x: Float, y: Float, w: Float, h: Float) {
-        nvgImagePattern(vg, x, y, w, h, 0f, getImage(image), 1f, nvgPaint)
-        nvgBeginPath(vg)
-        nvgRect(vg, x, y, w, h + .5f)
-        nvgFillPaint(vg, nvgPaint)
-        nvgFill(vg)
+    fun image(image: Image, x: Float, y: Float, w: Float, h: Float) = image(image, x, y, w, h, 0f)
+
+    fun createImage(resourcePath: String): Image = images.getOrPut(resourcePath) {
+        Image(resourceIdentifier(resourcePath))
     }
 
-    fun createImage(resourcePath: String): Image {
-        val image = images.keys.find { it.identifier == resourcePath } ?: Image(resourcePath)
-        if (image.isSVG) images.getOrPut(image) { NVGImage(0, loadSVG(image)) }.count++
-        else images.getOrPut(image) { NVGImage(0, loadImage(image)) }.count++
-        return image
-    }
-
-    // lowers reference count by 1, if it reaches 0 it gets deleted from mem
     fun deleteImage(image: Image) {
-        val nvgImage = images[image] ?: return
-        nvgImage.count--
-        if (nvgImage.count == 0) {
-            nvgDeleteImage(vg, nvgImage.nvg)
-            images.remove(image)
-        }
+        // createImage only caches resource-pack descriptors; TextureManager owns their lifetime.
+        images.entries.removeIf { it.value == image }
     }
 
-    private fun getImage(image: Image): Int {
-        return images[image]?.nvg ?: throw IllegalStateException("Image (${image.identifier}) doesn't exist")
+    private fun submit(vertices: List<UiVertex>, textureSetup: TextureSetup = TextureSetup.noTexture(), textured: Boolean = false) {
+        val frame = frame()
+        frame.context.submitUiGeometry(frame.pose, frame.scissorStack.last(), vertices, textureSetup, textured)
     }
 
-    private fun loadImage(image: Image): Int {
-        val w = IntArray(1)
-        val h = IntArray(1)
-        val channels = IntArray(1)
-        val buffer = stbi_load_from_memory(
-            image.buffer(),
-            w,
-            h,
-            channels,
-            4
-        ) ?: throw NullPointerException("Failed to load image: ${image.identifier}")
-        return nvgCreateImageRGBA(vg, w[0], h[0], 0, buffer)
-    }
-
-    private fun loadSVG(image: Image): Int {
-        val vec = image.stream.use { it.bufferedReader().readText() }
-        val svg = nsvgParse(vec, "px", 96f) ?: throw IllegalStateException("Failed to parse ${image.identifier}")
-
-        val width = svg.width().toInt()
-        val height = svg.height().toInt()
-        val buffer = memAlloc(width * height * 4)
-
-        try {
-            val rasterizer = nsvgCreateRasterizer()
-            nsvgRasterize(rasterizer, svg, 0f, 0f, 1f, buffer, width, height, width * 4)
-            val nvgImage = nvgCreateImageRGBA(vg, width, height, 0, buffer)
-            nsvgDeleteRasterizer(rasterizer)
-            return nvgImage
-        } finally {
-            nsvgDelete(svg)
-            memFree(buffer)
-        }
-    }
-
-    private fun color(color: Int) {
-        nvgRGBA(color.red.toByte(), color.green.toByte(), color.blue.toByte(), color.alpha.toByte(), nvgColor)
-    }
-
-    private fun color(color1: Int, color2: Int) {
-        nvgRGBA(color1.red.toByte(), color1.green.toByte(), color1.blue.toByte(), color1.alpha.toByte(), nvgColor)
-        nvgRGBA(color2.red.toByte(), color2.green.toByte(), color2.blue.toByte(), color2.alpha.toByte(), nvgColor2)
-    }
-
-    private fun gradient(color1: Int, color2: Int, x: Float, y: Float, w: Float, h: Float, direction: Gradient) {
-        color(color1, color2)
-        when (direction) {
-            Gradient.LeftToRight -> nvgLinearGradient(vg, x, y, x + w, y, nvgColor, nvgColor2, nvgPaint)
-            Gradient.TopToBottom -> nvgLinearGradient(vg, x, y, x, y + h, nvgColor, nvgColor2, nvgPaint)
-        }
-    }
-
-    private fun getFontID(font: Font): Int {
-        return fontMap.getOrPut(font) {
-            val buffer = font.buffer()
-            NVGFont(nvgCreateFontMem(vg, font.name, buffer, false), buffer)
-        }.id
-    }
-
-    private class Scissor(val previous: Scissor?, val x: Float, val y: Float, val maxX: Float, val maxY: Float) {
-        fun applyScissor() {
-            if (previous == null) nvgScissor(vg, x, y, maxX - x, maxY - y)
-            else {
-                val x = max(x, previous.x)
-                val y = max(y, previous.y)
-                val width = max(0f, (min(maxX, previous.maxX) - x))
-                val height = max(0f, (min(maxY, previous.maxY) - y))
-                nvgScissor(vg, x, y, width, height)
+    private fun submitMinecraftText(
+        text: FormattedCharSequence,
+        x: Float,
+        y: Float,
+        scale: Float,
+        color: Int,
+        shadow: Boolean,
+    ) {
+        if (scale <= 0f || color ushr 24 == 0) return
+        val frame = frame()
+        val pose = Matrix3x2f(frame.pose).translate(x, y).scale(scale, scale)
+        val scissor = frame.scissorStack.last()
+        if (scissor != null && (scissor.width() <= 0 || scissor.height() <= 0)) return
+        val prepared = mc.font.prepareText(text, 0f, 0f, color, shadow, false, 0)
+        val bounds = prepared.bounds()?.transformMaxBounds(pose)?.let { transformed ->
+            scissor?.intersection(transformed) ?: if (scissor == null) transformed else null
+        } ?: return
+        val renderables = ArrayList<TextRenderable>()
+        prepared.visit(object : MinecraftFont.GlyphVisitor {
+            override fun acceptRenderable(renderable: TextRenderable) {
+                renderables += renderable
             }
+        })
+        if (renderables.isEmpty()) return
+        frame.context.guiRenderState.addGuiElement(SmoothTextLayerAnchor(scissor, bounds))
+        for (renderable in renderables) {
+            frame.context.guiRenderState.addGlyphToCurrentLayer(SmoothGlyphRenderState(pose, renderable, scissor, null))
         }
     }
 
-    private data class NVGImage(var count: Int, val nvg: Int)
-    private data class NVGFont(val id: Int, val buffer: ByteBuffer)
+    private fun atlasFor(text: String, font: Font): OdinGlyphAtlas.PublishedAtlas? {
+        if (font.identifier != defaultFontId) return null
+        return OdinGlyphAtlas.snapshot()?.takeIf { it.layout.supports(text) }
+    }
+
+    private fun fontRaster(font: Font): FontRaster {
+        if (font.identifier != defaultFontId) return FontRaster(font.identifier, 16f)
+        return defaultFontRaster
+    }
+
+    private fun styled(text: String, identifier: Identifier): Component =
+        Component.literal(text).withStyle { style -> style.withFont(FontDescription.Resource(identifier)) }
+
+    private fun withFrameAlpha(color: Int): Int {
+        val sourceAlpha = color ushr 24 and 0xFF
+        val alpha = (sourceAlpha * frame().alpha).toInt().coerceIn(0, 255)
+        return color and 0x00FFFFFF or (alpha shl 24)
+    }
+
+    private fun frame(): Frame = activeFrame.get()
+        ?: throw IllegalStateException("[NVGRenderer] Drawing is only valid during GUI render-state extraction")
+
+    private fun resourceIdentifier(path: String): Identifier {
+        val normalized = path.trim().replace('\\', '/').removePrefix("/")
+        if (normalized.startsWith("assets/")) {
+            val rest = normalized.removePrefix("assets/")
+            val namespaceEnd = rest.indexOf('/')
+            require(namespaceEnd > 0) { "Invalid asset path: $path" }
+            return Identifier.fromNamespaceAndPath(rest.substring(0, namespaceEnd), rest.substring(namespaceEnd + 1))
+        }
+        return Identifier.parse(normalized)
+    }
+
+    private class Frame(
+        val context: GuiGraphicsExtractor,
+        val pose: Matrix3x2f,
+        val viewport: ScreenRectangle,
+        initialScissor: ScreenRectangle?,
+        var alpha: Float = 1f,
+        val savedStates: ArrayDeque<SavedState> = ArrayDeque(),
+        val scissorStack: MutableList<ScreenRectangle?> = mutableListOf(initialScissor),
+    )
+
+    private data class SavedState(val pose: Matrix3x2f, val alpha: Float)
+
+    private data class FontRaster(val identifier: Identifier, val size: Float)
+}
+
+/** Intersects an explicit scissor with its parent and the current GUI viewport. */
+internal fun viewportClippedScissor(
+    previous: ScreenRectangle?,
+    candidate: ScreenRectangle,
+    viewport: ScreenRectangle,
+): ScreenRectangle {
+    val visibleCandidate = candidate.intersection(viewport) ?: return ScreenRectangle.empty()
+    return previous?.intersection(visibleCandidate)
+        ?: if (previous == null) visibleCandidate else ScreenRectangle.empty()
 }

@@ -50,7 +50,8 @@ object TPMazeSolver {
 
         best = candidates.firstOrNull { it in correctPortals }
             ?: candidates.minByOrNull {
-                val yaw = (atan2(it.center.z - pos.z, it.center.x - pos.x) * 180.0 / Math.PI).toFloat() - 90f
+                val center = Vec3.atCenterOf(it)
+                val yaw = (atan2(center.z - pos.z, center.x - pos.x) * 180.0 / Math.PI).toFloat() - 90f
                 abs(Mth.wrapDegrees(yaw) - Mth.wrapDegrees(event.change.yRot))
             }
     }

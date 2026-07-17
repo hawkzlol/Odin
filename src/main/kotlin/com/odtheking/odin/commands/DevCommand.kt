@@ -118,7 +118,7 @@ val devCommand = Commodore("oddev") {
                             |InBoss: ${DungeonUtils.inBoss}
                             |Floor: ${DungeonUtils.floor?.name}
                             |Score: ${DungeonUtils.score}
-                            |Secrets: (${DungeonUtils.secretCount} - ${DungeonUtils.neededSecretsAmount} - ${DungeonUtils.totalSecrets} - ${DungeonUtils.knownSecrets}) 
+                            |Secrets: (${DungeonUtils.secretCount} - ${DungeonUtils.neededSecretsAmount} - ${DungeonUtils.totalSecrets} - ${DungeonUtils.knownSecrets})
                             |mimicKilled: ${DungeonUtils.mimicKilled}
                             |Deaths: ${DungeonUtils.deathCount}, Crypts: ${DungeonUtils.cryptCount}
                             |BonusScore: ${DungeonUtils.getBonusScore}, isPaul: ${DungeonUtils.isPaul}

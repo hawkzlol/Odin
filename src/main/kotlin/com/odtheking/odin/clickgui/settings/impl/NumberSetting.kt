@@ -44,7 +44,6 @@ class NumberSetting<E>(
 
     private var displayValue = ""
     private var prevLocation = 0f
-    private var valueWidth = -1f
     private var isDragging = false
 
     private var sliderPercentage = 0f
@@ -55,7 +54,6 @@ class NumberSetting<E>(
                     sliderAnim.start()
                 }
                 displayValue = getDisplay()
-                valueWidth = -1f
             }
             field = value
         }
@@ -95,9 +93,7 @@ class NumberSetting<E>(
             sliderPercentage = newPercentage
         }
 
-        if (valueWidth < 0) {
-            valueWidth = NVGRenderer.textWidth(displayValue, 16f, NVGRenderer.defaultFont)
-        }
+        val valueWidth = NVGRenderer.textWidth(displayValue, 16f, NVGRenderer.defaultFont)
 
         NVGRenderer.text(name, x + 6f, y + height / 2f - 15f, 16f, Colors.WHITE.rgba, NVGRenderer.defaultFont)
         NVGRenderer.text(displayValue, x + width - valueWidth - 4f, y + height / 2f - 15f, 16f, Colors.WHITE.rgba, NVGRenderer.defaultFont)

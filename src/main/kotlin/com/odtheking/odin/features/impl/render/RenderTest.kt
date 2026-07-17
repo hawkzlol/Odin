@@ -74,44 +74,39 @@ object RenderTest : Module(
                 color = Color(0x7eb4c7ff),
             )
 
-            try {
-                run {
-                    val desiredCount = boxCount.coerceAtLeast(0)
-                    val layers = boxLevels.coerceAtLeast(1)
+            val desiredCount = boxCount.coerceAtLeast(0)
+            val layers = boxLevels.coerceAtLeast(1)
 
-                    if (desiredCount > 0) {
-                        val perLayer = ceil(desiredCount.toDouble() / layers.toDouble()).toInt()
-                        val side = ceil(sqrt(perLayer.toDouble())).toInt()
-                        val range = side / 2
+            if (desiredCount > 0) {
+                val perLayer = ceil(desiredCount.toDouble() / layers.toDouble()).toInt()
+                val side = ceil(sqrt(perLayer.toDouble())).toInt()
+                val range = side / 2
 
-                        var drawn = 0
-                        outer@ for (by in 0 until layers) {
-                            val byOff = (by - (layers / 2)).toDouble()
-                            for (bx in -range..range) {
-                                for (bz in -range..range) {
-                                    if (drawn >= desiredCount) break@outer
+                var drawn = 0
+                outer@ for (by in 0 until layers) {
+                    val byOff = (by - (layers / 2)).toDouble()
+                    for (bx in -range..range) {
+                        for (bz in -range..range) {
+                            if (drawn >= desiredCount) break@outer
 
-                                    val bxOff = bx.toDouble()
-                                    val bzOff = bz.toDouble()
+                            val bxOff = bx.toDouble()
+                            val bzOff = bz.toDouble()
 
-                                    val minX = playerPos.x + bxOff - 0.45
-                                    val minY = playerPos.y + byOff - 0.45
-                                    val minZ = playerPos.z + bzOff - 0.45
-                                    val aabb = AABB(minX, minY, minZ, minX + 0.9, minY + 0.9, minZ + 0.9)
+                            val minX = playerPos.x + bxOff - 0.45
+                            val minY = playerPos.y + byOff - 0.45
+                            val minZ = playerPos.z + bzOff - 0.45
+                            val aabb = AABB(minX, minY, minZ, minX + 0.9, minY + 0.9, minZ + 0.9)
 
-                                    val cInt = (0xff000000.toInt() or (((bx + range) and 0xff) shl 16) or (((by + 32) and 0xff) shl 8) or ((bz + range) and 0xff))
-                                    val c = Color(cInt)
+                            val cInt = (0xff000000.toInt() or (((bx + range) and 0xff) shl 16) or (((by + 32) and 0xff) shl 8) or ((bz + range) and 0xff))
+                            val c = Color(cInt)
 
-                                    drawStyledBox(aabb = aabb, color = c, style = 2)
+                            drawStyledBox(aabb = aabb, color = c, style = 2)
 
-                                    drawn++
-                                }
-                            }
+                            drawn++
                         }
                     }
                 }
-
-            } catch (_: Exception) { }
+            }
         }
     }
 

@@ -9,7 +9,7 @@ class PersonalBest(module: Module, name: String) {
     private val mapSetting = module.registerSetting(MapSetting(name, mutableMapOf<String, Float>()))
     /**
      * Updates the personal best for a specific puzzle
-     * 
+     *
      * @param name The name of the puzzle
      * @param time The new time achieved
      * @param unit The unit of measurement for display

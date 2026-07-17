@@ -9,22 +9,17 @@ import com.odtheking.odin.features.impl.render.Shenanigans
 import com.odtheking.odin.utils.IrisCompatability
 import com.odtheking.odin.utils.ServerUtils
 import com.odtheking.odin.utils.handlers.TickTasks
-import com.odtheking.odin.utils.network.WebUtils.postData
-import com.odtheking.odin.utils.render.ItemStateRenderer
 import com.odtheking.odin.utils.render.RenderBatchManager
-import com.odtheking.odin.utils.render.RoundRectPIPRenderer
 import com.odtheking.odin.utils.skyblock.*
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonListener
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalUtils
-import com.odtheking.odin.utils.ui.rendering.NVGPIPRenderer
 import com.odtheking.odin.utils.ui.widget.CustomGUIImpl
+import com.odtheking.odin.utils.ui.rendering.OdinGlyphAtlas
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
-import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.Version
 import net.minecraft.client.Minecraft
@@ -61,6 +56,7 @@ object OdinMod : ClientModInitializer {
     val scope = CoroutineScope(SupervisorJob() + EmptyCoroutineContext)
 
     override fun onInitializeClient() {
+        OdinGlyphAtlas.initialize()
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             arrayOf(
                 mainCommand, devCommand, waypointCommand,
@@ -78,21 +74,5 @@ object OdinMod : ClientModInitializer {
             ModuleManager, CustomGUIImpl, Shenanigans,
         ).forEach { EventBus.subscribe(it) }
 
-        PictureInPictureRendererRegistry.register { context ->
-            NVGPIPRenderer(context.bufferSource())
-        }
-
-        PictureInPictureRendererRegistry.register { context ->
-            RoundRectPIPRenderer(context.bufferSource())
-        }
-
-        PictureInPictureRendererRegistry.register { context ->
-            ItemStateRenderer(context.bufferSource())
-        }
-
-        val name = mc.user.name.takeIf { !it.matches(Regex("Player\\d{2,3}")) } ?: return
-        scope.launch {
-            postData("https://api.odtheking.com/tele/", """{"username": "$name", "version": "Fabric $version"}""")
-        }
     }
 }

@@ -25,12 +25,15 @@ import kotlin.math.floor
 class Panel(private val category: Category) {
 
     val panelSetting = ClickGUIModule.panelSetting[category.name] ?: throw IllegalStateException("Panel setting for category $category is not initialized")
-    val moduleButtons = ModuleManager.modulesByCategory[category]
-        ?.sortedByDescending { NVGRenderer.textWidth(it.name, 16f, NVGRenderer.defaultFont) }
+    private val sourceModuleButtons = ModuleManager.modulesByCategory[category]
         ?.map { ModuleButton(it, this@Panel) } ?: listOf()
-    private val lastModuleButton by lazy { moduleButtons.lastOrNull() }
+    val moduleButtons: List<ModuleButton>
+        get() = sourceModuleButtons.sortedByDescending {
+            NVGRenderer.textWidth(it.module.name, 16f, NVGRenderer.defaultFont)
+        }
 
-    private val textWidth = NVGRenderer.textWidth(category.name, 22f, NVGRenderer.defaultFont)
+    private val textWidth: Float
+        get() = NVGRenderer.textWidth(category.name, 22f, NVGRenderer.defaultFont)
     private var previousHeight = 0f
     private var scrollOffset = 0f
     var dragging = false
@@ -39,6 +42,8 @@ class Panel(private val category: Category) {
     private var deltaY = 0f
 
     fun draw(mouseX: Float, mouseY: Float) {
+        val orderedButtons = moduleButtons
+        val lastModuleButton = orderedButtons.lastOrNull()
         if (dragging) {
             panelSetting.x = floor(deltaX + mouseX)
             panelSetting.y = floor(deltaY + mouseY)
@@ -73,7 +78,7 @@ class Panel(private val category: Category) {
 
         var startY = scrollOffset + HEIGHT
         if (panelSetting.extended) {
-            for (button in moduleButtons) {
+            for (button in orderedButtons) {
                 if (!button.module.name.contains(SearchBar.currentSearch, true)) continue
                 startY += button.draw(panelSetting.x, startY + panelSetting.y, button == lastModuleButton)
             }

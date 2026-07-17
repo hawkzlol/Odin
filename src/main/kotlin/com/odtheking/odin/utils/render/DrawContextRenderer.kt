@@ -4,7 +4,11 @@ import com.odtheking.odin.utils.Color.Companion.alpha
 import com.odtheking.odin.utils.Color.Companion.blue
 import com.odtheking.odin.utils.Color.Companion.green
 import com.odtheking.odin.utils.Color.Companion.red
+import com.odtheking.odin.utils.ui.rendering.UiGeometry
+import com.odtheking.odin.utils.ui.rendering.UiRadii
+import com.odtheking.odin.utils.ui.rendering.submitUiGeometry
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import org.joml.Matrix3x2f
 
 object DrawContextRenderer {
 
@@ -98,11 +102,32 @@ object DrawContextRenderer {
         topLeftColor: Int, topRightColor: Int, bottomRightColor: Int,
         bottomLeftColor: Int, options: RoundedOptions
     ) {
-        RoundRectPIPRenderer.submit(
-            guiGraphics, x0, y0, x1, y1,
-            topLeftColor, topRightColor, bottomRightColor, bottomLeftColor,
-            options.radii.topLeft, options.radii.topRight, options.radii.bottomRight, options.radii.bottomLeft,
-            options.outline?.color ?: 0, options.outline?.width ?: 0.0f
+        val radii = UiRadii(
+            options.radii.topLeft,
+            options.radii.topRight,
+            options.radii.bottomRight,
+            options.radii.bottomLeft,
+        )
+        val vertices = buildList {
+            addAll(
+                UiGeometry.roundedFill(
+                    x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), radii,
+                    topLeftColor, topRightColor, bottomRightColor, bottomLeftColor,
+                )
+            )
+            options.outline?.let { outline ->
+                addAll(
+                    UiGeometry.roundedOutline(
+                        x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(),
+                        radii, outline.width, outline.color,
+                    )
+                )
+            }
+        }
+        guiGraphics.submitUiGeometry(
+            Matrix3x2f(guiGraphics.pose()),
+            guiGraphics.scissorStack.peek(),
+            vertices,
         )
     }
 

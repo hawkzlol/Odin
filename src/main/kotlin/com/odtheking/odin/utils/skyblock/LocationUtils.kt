@@ -50,7 +50,7 @@ object LocationUtils {
         }
 
         on<LevelEvent.Load> {
-            currentArea = if (mc.isSingleplayer) Island.SinglePlayer else Island.Unknown
+            currentArea = if (mc.singleplayerServer?.isPublished == false) Island.SinglePlayer else Island.Unknown
             isInSkyblock = false
             lobbyId = null
         }

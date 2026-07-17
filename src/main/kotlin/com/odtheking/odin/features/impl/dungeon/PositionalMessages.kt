@@ -21,6 +21,9 @@ import net.minecraft.world.phys.Vec3
 import java.util.*
 import kotlin.concurrent.schedule
 
+internal fun isWithinRadius(distanceSquared: Double, radius: Double): Boolean =
+    distanceSquared <= radius * radius
+
 object PositionalMessages : Module(
     name = "Positional Messages",
     description = "Sends a message when you're near a certain position. /posmsg"
@@ -85,9 +88,9 @@ object PositionalMessages : Module(
         val msgSent = sentMessages.getOrDefault(posMessage, false)
         val player = mc.player ?: return
         val radius = posMessage.distance ?: return
-        if (player.distanceToSqr(posMessage.x, posMessage.y, posMessage.z) <= radius * radius) {
+        if (isWithinRadius(player.distanceToSqr(posMessage.x, posMessage.y, posMessage.z), radius)) {
             if (!msgSent) Timer().schedule(posMessage.delay) {
-                if (player.distanceToSqr(posMessage.x, posMessage.y, posMessage.z) <= radius * radius)
+                if (isWithinRadius(player.distanceToSqr(posMessage.x, posMessage.y, posMessage.z), radius))
                     sendCommand("pc ${posMessage.message}")
             }
             sentMessages[posMessage] = true

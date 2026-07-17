@@ -4,8 +4,13 @@ import net.minecraft.client.renderer.rendertype.LayeringTransform
 import net.minecraft.client.renderer.rendertype.OutputTarget
 import net.minecraft.client.renderer.rendertype.RenderSetup
 import net.minecraft.client.renderer.rendertype.RenderType
+import net.minecraft.client.renderer.rendertype.RenderTypes
+import net.minecraft.resources.Identifier
+import java.util.concurrent.ConcurrentHashMap
 
 object CustomRenderType {
+
+    private val texturedQuadsEsp = ConcurrentHashMap<Identifier, RenderType>()
 
     // RenderTypes.LINES, RenderTypes.LINES_TRANSLUCENT || LINES_ESP, LINES_TRANSLUCENT_ESP
 
@@ -33,4 +38,20 @@ object CustomRenderType {
             .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
             .createRenderSetup()
     )
+
+    fun texturedQuad(texture: Identifier, depth: Boolean): RenderType {
+        if (depth) return RenderTypes.entityTranslucent(texture)
+
+        return texturedQuadsEsp.computeIfAbsent(texture) {
+            RenderType.create(
+                "textured-quads-esp",
+                RenderSetup.builder(CustomRenderPipelines.TEXTURED_QUADS_ESP)
+                    .withTexture("Sampler0", it)
+                    .useLightmap()
+                    .useOverlay()
+                    .sortOnUpload()
+                    .createRenderSetup()
+            )
+        }
+    }
 }

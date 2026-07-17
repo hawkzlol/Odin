@@ -51,11 +51,14 @@ class TextInputHandler(
     }
 
     fun draw(mouseX: Float, mouseY: Float) {
-        if (isDragging) updateCaretFromMouse(mouseX)
+        val currentText = text
+        val measure = textMeasurer(currentText)
+        if (isDragging) updateCaretFromMouse(mouseX, currentText, measure)
+        else updateCaretPosition(currentText, measure)
 
         if (hasSelection()) {
-            val selStartX = textWidth(text.substring(0, selectionStart()))
-            val selEndX   = textWidth(text.substring(0, selectionEnd()))
+            val selStartX = measure(currentText.substring(0, selectionStart()))
+            val selEndX   = measure(currentText.substring(0, selectionEnd()))
             val rectX = x + 4f - textOffset + selStartX
             val rectW = selEndX - selStartX
             NVGRenderer.pushScissor(x, y, width, height)
@@ -69,7 +72,7 @@ class TextInputHandler(
         }
 
         NVGRenderer.pushScissor(x, y, width, height)
-        NVGRenderer.text(text, x + 4f - textOffset, y + 2f, height - 2, Colors.WHITE.rgba, NVGRenderer.defaultFont)
+        NVGRenderer.text(currentText, x + 4f - textOffset, y + 2f, height - 2, Colors.WHITE.rgba, NVGRenderer.defaultFont)
         NVGRenderer.popScissor()
     }
 
@@ -88,7 +91,11 @@ class TextInputHandler(
         lastClickTime = now
 
         when (clickCount) {
-            1 -> { updateCaretFromMouse(mouseX); clearSelection() }
+            1 -> {
+                val currentText = text
+                updateCaretFromMouse(mouseX, currentText, textMeasurer(currentText))
+                clearSelection()
+            }
             2 -> selectWord()
             3 -> { selectAll(); clickCount = 0 }
         }
@@ -144,8 +151,9 @@ class TextInputHandler(
             true
         }
         caret > 0 -> {
-            textSetter(text.removeRange(caret - 1, caret))
-            caret--
+            val start = previousCodePointBoundary(text, caret)
+            textSetter(text.removeRange(start, caret))
+            caret = start
             clearSelection()
             saveState()
             true
@@ -164,7 +172,8 @@ class TextInputHandler(
             true
         }
         caret < text.length -> {
-            textSetter(text.removeRange(caret, caret + 1))
+            val end = nextCodePointBoundary(text, caret)
+            textSetter(text.removeRange(caret, end))
             clearSelection()
             saveState()
             true
@@ -183,8 +192,8 @@ class TextInputHandler(
         }
 
         val newCaret = when {
-            direction > 0 -> if (ctrl) getNextWordBoundary()    else (caret + 1).coerceAtMost(text.length)
-            else          -> if (ctrl) getPreviousWordBoundary() else (caret - 1).coerceAtLeast(0)
+            direction > 0 -> if (ctrl) getNextWordBoundary() else nextCodePointBoundary(text, caret)
+            else          -> if (ctrl) getPreviousWordBoundary() else previousCodePointBoundary(text, caret)
         }
         if (newCaret == caret) return false
 
@@ -230,22 +239,19 @@ class TextInputHandler(
         saveState()
     }
 
-    private fun updateCaretFromMouse(mouseX: Float) {
+    private fun updateCaretFromMouse(mouseX: Float, currentText: String, measure: (String) -> Float) {
         val mx = mouseX - (x + 4f - textOffset)
-        var offset = 0f
-        var newCaret = 0
-        for (i in text.indices) {
-            val cw = textWidth(text[i].toString())
-            if (offset + cw / 2f > mx) break
-            offset += cw
-            newCaret = i + 1
-        }
-        caret = newCaret
-        updateCaretPosition()
+        caret = hitTestTextCaret(currentText, mx, measure)
+        updateCaretPosition(currentText, measure)
     }
 
     private fun updateCaretPosition() {
-        caretX = textWidth(text.substring(0, caret))
+        val currentText = text
+        updateCaretPosition(currentText, textMeasurer(currentText))
+    }
+
+    private fun updateCaretPosition(currentText: String, measure: (String) -> Float) {
+        caretX = measure(currentText.substring(0, caret.coerceAtMost(currentText.length)))
 
         val visibleWidth = width - 8f
         when {
@@ -253,7 +259,7 @@ class TextInputHandler(
             caretX - textOffset < 0f           -> textOffset = caretX
         }
 
-        val totalWidth = textWidth(text)
+        val totalWidth = measure(currentText)
         if (textOffset > 0f && totalWidth - textOffset < visibleWidth)
             textOffset = (totalWidth - visibleWidth).coerceAtLeast(0f)
     }
@@ -328,6 +334,30 @@ class TextInputHandler(
         updateCaretPosition()
     }
 
-    private fun textWidth(str: String): Float =
-        NVGRenderer.textWidth(str, height - 2, NVGRenderer.defaultFont)
+    private fun textMeasurer(currentText: String): (String) -> Float =
+        NVGRenderer.textMeasurer(currentText, height - 2, NVGRenderer.defaultFont)
+}
+
+internal fun previousCodePointBoundary(text: String, index: Int): Int {
+    val safeIndex = index.coerceIn(0, text.length)
+    return if (safeIndex == 0) 0 else text.offsetByCodePoints(safeIndex, -1)
+}
+
+internal fun nextCodePointBoundary(text: String, index: Int): Int {
+    val safeIndex = index.coerceIn(0, text.length)
+    return if (safeIndex == text.length) text.length else text.offsetByCodePoints(safeIndex, 1)
+}
+
+/** Hit-tests complete-run prefix widths so kerning and the selected font backend remain coherent. */
+internal fun hitTestTextCaret(text: String, mouseX: Float, measure: (String) -> Float): Int {
+    var index = 0
+    var previousWidth = measure("")
+    while (index < text.length) {
+        val next = nextCodePointBoundary(text, index)
+        val nextWidth = measure(text.substring(0, next))
+        if ((previousWidth + nextWidth) * 0.5f > mouseX) return index
+        index = next
+        previousWidth = nextWidth
+    }
+    return text.length
 }

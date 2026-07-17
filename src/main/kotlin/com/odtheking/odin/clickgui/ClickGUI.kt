@@ -9,7 +9,6 @@ import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.Colors
 import com.odtheking.odin.utils.ui.HoverHandler
 import com.odtheking.odin.utils.ui.animations.EaseOutAnimation
-import com.odtheking.odin.utils.ui.rendering.NVGPIPRenderer
 import com.odtheking.odin.utils.ui.rendering.NVGRenderer
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
@@ -36,7 +35,7 @@ object ClickGUI : Screen(Component.literal("Click GUI")) {
     val gray26 = Color(26, 26, 26)
 
     override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTicks: Float) {
-        NVGPIPRenderer.draw(context, 0, 0, context.guiWidth(), context.guiHeight()) {
+        NVGRenderer.record(context) {
             val scaledMouseX = odinMouseX / ClickGUIModule.getStandardGuiScale()
             val scaledMouseY = odinMouseY / ClickGUIModule.getStandardGuiScale()
 
@@ -52,8 +51,9 @@ object ClickGUI : Screen(Component.literal("Click GUI")) {
             if (openAnim.isAnimating()) {
                 val scale = openAnim.get(0f, 1f)
 
-                val centerX = context.guiWidth().toFloat()
-                val centerY = context.guiHeight().toFloat()
+                val standardScale = ClickGUIModule.getStandardGuiScale()
+                val centerX = mc.window.screenWidth / (2f * standardScale)
+                val centerY = mc.window.screenHeight / (2f * standardScale)
                 NVGRenderer.translate(centerX, centerY)
                 NVGRenderer.scale(scale, scale)
                 NVGRenderer.translate(-centerX, -centerY)
@@ -171,7 +171,7 @@ object ClickGUI : Screen(Component.literal("Click GUI")) {
         }
     }
 
-    val movementImage = NVGRenderer.createImage("/assets/odin/MovementIcon.svg")
-    val hueImage = NVGRenderer.createImage("/assets/odin/HueGradient.png")
-    val chevronImage = NVGRenderer.createImage("/assets/odin/chevron.svg")
+    val movementImage = NVGRenderer.createImage("odin:movement_icon.png")
+    val hueImage = NVGRenderer.createImage("odin:hue_gradient.png")
+    val chevronImage = NVGRenderer.createImage("odin:chevron.png")
 }

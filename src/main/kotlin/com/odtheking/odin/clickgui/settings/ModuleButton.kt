@@ -34,7 +34,8 @@ class ModuleButton(val module: Module, val panel: Panel) {
         get() =
             colorAnim.get(ClickGUIModule.clickGUIColor, gray26, module.enabled).brighter(1 + hover.percent() / 500f)
 
-    private val nameWidth = NVGRenderer.textWidth(module.name, 18f, NVGRenderer.defaultFont)
+    private val nameWidth: Float
+        get() = NVGRenderer.textWidth(module.name, 18f, NVGRenderer.defaultFont)
     private val hoverHandler = HoverHandler(750)
     private val extendAnim = EaseInOutAnimation(250)
     private val hover = HoverHandler(250)
@@ -63,8 +64,19 @@ class ModuleButton(val module: Module, val panel: Panel) {
         if (extendAnim.isAnimating()) NVGRenderer.pushScissor(x, y, Panel.WIDTH, totalHeight)
 
         if (extendAnim.isAnimating() || extended) {
+            expandedSettingsSurface(y, totalHeight)?.let { surface ->
+                NVGRenderer.rect(
+                    x,
+                    surface.y,
+                    Panel.WIDTH,
+                    surface.height,
+                    surface.color,
+                )
+            }
+            NVGRenderer.nextLayer()
             for (setting in representableSettings) {
-                if (setting.isVisible) drawY += setting.render(x, y + drawY, mouseX / ClickGUIModule.getStandardGuiScale(), mouseY / ClickGUIModule.getStandardGuiScale())
+                if (!setting.isVisible) continue
+                drawY += setting.render(x, y + drawY, mouseX / ClickGUIModule.getStandardGuiScale(), mouseY / ClickGUIModule.getStandardGuiScale())
             }
         }
 
@@ -118,4 +130,19 @@ class ModuleButton(val module: Module, val panel: Panel) {
 
     private fun getSettingHeight(): Float =
         representableSettings.filter { it.isVisible }.sumOf { it.getHeight().toDouble() }.toFloat()
+
+}
+
+internal const val SETTINGS_BACKGROUND_COLOR = 0x7D000000
+
+internal data class ExpandedSettingsSurface(val y: Float, val height: Float, val color: Int)
+
+/** Returns the visible, animated surface beneath one module's expanded settings. */
+internal fun expandedSettingsSurface(moduleY: Float, totalHeight: Float): ExpandedSettingsSurface? {
+    val height = totalHeight - Panel.HEIGHT
+    return if (height > 0f) {
+        ExpandedSettingsSurface(moduleY + Panel.HEIGHT, height, SETTINGS_BACKGROUND_COLOR)
+    } else {
+        null
+    }
 }

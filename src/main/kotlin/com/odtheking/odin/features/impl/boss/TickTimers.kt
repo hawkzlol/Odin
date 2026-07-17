@@ -12,7 +12,6 @@ import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.Colors
 import com.odtheking.odin.utils.render.textDim
 import com.odtheking.odin.utils.skyblock.MORT_REGEX
-import com.odtheking.odin.utils.skyblock.SplitsManager
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import com.odtheking.odin.utils.toFixed
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket

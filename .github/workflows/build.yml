@@ -1,12 +1,15 @@
 name: build
 on: [ pull_request, push ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 21 ]
+        java: [ 25 ]
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
@@ -27,7 +30,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: build
-        run: ./gradlew build
+        run: ./gradlew clean build
 
       - name: upload release jar
         uses: actions/upload-artifact@v7.0.1
@@ -35,4 +38,6 @@ jobs:
           path: |
             build/libs/Odin-*.jar
             !build/libs/Odin-*-sources.jar
+            !build/libs/Odin-*-dev.jar
+          if-no-files-found: error
           archive: false

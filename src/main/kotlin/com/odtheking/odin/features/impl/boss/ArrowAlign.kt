@@ -19,6 +19,7 @@ import com.odtheking.odin.utils.skyblock.dungeon.M7Phases
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.item.Items
+import net.minecraft.world.phys.Vec3
 import org.lwjgl.glfw.GLFW
 
 object ArrowAlign : Module(
@@ -93,7 +94,7 @@ object ArrowAlign : Module(
                 }
                 drawText(
                     "§$colorCode$clickNeeded",
-                    getFramePositionFromIndex(index).center.addVec(y = 0.1, x = -0.3),
+                    Vec3.atCenterOf(getFramePositionFromIndex(index)).addVec(y = 0.1, x = -0.3),
                     1f, false
                 )
             }

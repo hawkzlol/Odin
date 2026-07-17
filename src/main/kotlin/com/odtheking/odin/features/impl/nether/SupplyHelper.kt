@@ -17,6 +17,7 @@ import com.odtheking.odin.utils.render.drawText
 import com.odtheking.odin.utils.skyblock.KuudraUtils
 import com.odtheking.odin.utils.skyblock.Supply
 import net.minecraft.core.BlockPos
+import net.minecraft.world.phys.Vec3
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -79,7 +80,7 @@ object SupplyHelper : Module(
                 Supply.entries.forEach { type ->
                     drawText(
                         "§e${type.name}",
-                        type.pickUpSpot.center, 2f, true
+                        Vec3.atCenterOf(type.pickUpSpot), 2f, true
                     )
                 }
             }

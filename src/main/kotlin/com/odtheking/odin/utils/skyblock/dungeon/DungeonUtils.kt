@@ -17,6 +17,19 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToLong
 
+@PublishedApi
+internal fun calculateDungeonBonusScore(
+    cryptCount: Int,
+    mimicKilled: Boolean,
+    princeKilled: Boolean,
+    batKilled: Boolean,
+    paulBonus: Boolean,
+): Int = cryptCount.coerceAtMost(5) +
+    (if (mimicKilled) 2 else 0) +
+    (if (princeKilled) 1 else 0) +
+    (if (batKilled) 1 else 0) +
+    (if (paulBonus) 10 else 0)
+
 object DungeonUtils {
 
     inline val inDungeons: Boolean
@@ -105,14 +118,13 @@ object DungeonUtils {
         get() = DungeonListener.paul
 
     inline val getBonusScore: Int
-        get() {
-            var score = cryptCount.coerceAtMost(5)
-            if (mimicKilled) score += 2
-            if (princeKilled) score += 1
-            if (batKilled) score += 1
-            if ((isPaul && togglePaul == 0) || togglePaul == 2) score += 10
-            return score
-        }
+        get() = calculateDungeonBonusScore(
+            cryptCount = cryptCount,
+            mimicKilled = mimicKilled,
+            princeKilled = princeKilled,
+            batKilled = batKilled,
+            paulBonus = (isPaul && togglePaul == 0) || togglePaul == 2,
+        )
 
     inline val bloodDone: Boolean
         get() = DungeonListener.dungeonStats.bloodDone

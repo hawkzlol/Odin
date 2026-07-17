@@ -43,7 +43,6 @@ class SelectorSetting(
             index = optionIndex(value)
         }
 
-    private val elementWidths by lazy { options.map { NVGRenderer.textWidth(it, 16f, NVGRenderer.defaultFont) } }
     private val settingAnim = EaseInOutAnimation(200)
     private val hover = HoverHandler(150)
     private val defaultHeight = Panel.HEIGHT
@@ -57,6 +56,7 @@ class SelectorSetting(
     override fun render(x: Float, y: Float, mouseX: Float, mouseY: Float): Float {
         super.render(x, y, mouseX, mouseY)
 
+        val elementWidths = options.map { NVGRenderer.textWidth(it, 16f, NVGRenderer.defaultFont) }
         val currentWidth = elementWidths[index]
 
         hover.handle(x + width - 20f - currentWidth, y + defaultHeight / 2f - 10f, currentWidth + 12f, 22f, true)

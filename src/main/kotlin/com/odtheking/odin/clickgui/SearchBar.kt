@@ -15,11 +15,12 @@ object SearchBar {
         private set(value) {
             if (value == field || value.length > 16) return
             field = value
-            searchWidth = NVGRenderer.textWidth(value, 20f, NVGRenderer.defaultFont)
         }
 
-    private var placeHolderWidth = NVGRenderer.textWidth("Search here...", 20f, NVGRenderer.defaultFont)
-    private var searchWidth = NVGRenderer.textWidth(currentSearch, 20f, NVGRenderer.defaultFont)
+    private val placeHolderWidth: Float
+        get() = NVGRenderer.textWidth("Search here...", 20f, NVGRenderer.defaultFont)
+    private val searchWidth: Float
+        get() = NVGRenderer.textWidth(currentSearch, 20f, NVGRenderer.defaultFont)
 
     private val textInputHandler = TextInputHandler(
         textProvider = { currentSearch },

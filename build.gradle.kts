@@ -32,17 +32,9 @@ dependencies {
 
     compileOnly("com.terraformersmc:modmenu:${property("modmenu_version")}")
 
-    property("minecraft_lwjgl_version").let { lwjglVersion ->
-        implementation("org.lwjgl:lwjgl-nanovg:$lwjglVersion")
-        include("org.lwjgl:lwjgl-nanovg:$lwjglVersion")
-
-        listOf("windows", "linux", "macos", "macos-arm64").forEach { os ->
-            implementation("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-$os")
-            include("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-$os")
-        }
-    }
-
     compileOnly("maven.modrinth:iris:${property("iris")}")
+
+    testImplementation(kotlin("test"))
 }
 
 loom {
@@ -91,6 +83,10 @@ tasks {
         options.encoding = "UTF-8"
         options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Xlint:unchecked"))
     }
+
+    test {
+        useJUnitPlatform()
+    }
 }
 
 java {
@@ -103,7 +99,7 @@ java {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "com.odtheking"
+            groupId = property("maven_group") as String
             artifactId = "Odin"
             version = version
             from(components["java"])

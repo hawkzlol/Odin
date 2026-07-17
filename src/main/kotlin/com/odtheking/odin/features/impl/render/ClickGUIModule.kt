@@ -13,7 +13,10 @@ import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.alert
 import com.odtheking.odin.utils.getChatBreak
+import com.odtheking.odin.utils.isPortReleaseNewer
 import com.odtheking.odin.utils.modMessage
+import com.odtheking.odin.utils.PORT_RELEASE_API
+import com.odtheking.odin.utils.PORT_RELEASE_PAGE
 import com.odtheking.odin.utils.network.WebUtils.fetchJson
 import com.odtheking.odin.utils.ui.rendering.NVGRenderer
 import kotlinx.coroutines.launch
@@ -39,7 +42,7 @@ object ClickGUIModule : Module(
     val hypixelApiUrl by StringSetting("API URL", "https://api.odtheking.com/hypixel/", 128, "The Hypixel API server to connect to.").hide()
     val webSocketUrl by StringSetting("Socket URL", "wss://ws.odtheking.com/", 128, "The Websocket server to connect to.").hide()
 
-    private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.setScreen(HudManager) }
+    private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.gui.setScreen(HudManager) }
     val devMessage by BooleanSetting("Developer Message", false, desc = "Sends development related messages to the chat.")
 
     override fun onKeybind() {
@@ -47,7 +50,7 @@ object ClickGUIModule : Module(
     }
 
     override fun onEnable() {
-        mc.setScreen(ClickGUI)
+        mc.gui.setScreen(ClickGUI)
         super.onEnable()
         toggle()
     }
@@ -64,8 +67,6 @@ object ClickGUIModule : Module(
         }
     }
 
-    private const val RELEASE_LINK = "https://github.com/odtheking/OdinFabric/releases/latest"
-    private const val MODRINTH_LINK = "https://modrinth.com/mod/odin/versions"
     private var latestVersionNumber: String? = null
     private var hasSentUpdateMessage = false
 
@@ -80,23 +81,18 @@ object ClickGUIModule : Module(
 
             modMessage("""
             ${getChatBreak()}
-                
+
             §3Odin update available: §f$latestVersionNumber
             """.trimIndent(), "")
 
-            modMessage(Component.literal("§b$RELEASE_LINK").withStyle {
-                it.withClickEvent(ClickEvent.OpenUrl(URI(RELEASE_LINK)))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal(RELEASE_LINK)))
+            modMessage(Component.literal("§b$PORT_RELEASE_PAGE").withStyle {
+                it.withClickEvent(ClickEvent.OpenUrl(URI(PORT_RELEASE_PAGE)))
+                    .withHoverEvent(HoverEvent.ShowText(Component.literal(PORT_RELEASE_PAGE)))
             }, "")
-            modMessage(Component.literal("§b$MODRINTH_LINK").withStyle {
-                it.withClickEvent(ClickEvent.OpenUrl(URI(MODRINTH_LINK)))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal(MODRINTH_LINK)))
-            }, "")
-
             modMessage("""
-            
+
             ${getChatBreak()}§r
-            
+
             """.trimIndent(), "")
             alert("Odin Update Available")
         }
@@ -109,26 +105,9 @@ object ClickGUIModule : Module(
     }
 
     private suspend fun checkNewerVersion(currentVersion: String): String? {
-        val newest = fetchJson<Release>("https://api.github.com/repos/odtheking/OdinFabric/releases/latest").getOrElse { return null }
+        val newest = fetchJson<Release>(PORT_RELEASE_API).getOrElse { return null }
 
-        return if (isSecondNewer(currentVersion, newest.tagName)) newest.tagName else null
-    }
-
-    private fun isSecondNewer(currentVersion: String, previousVersion: String?): Boolean {
-        if (currentVersion.isEmpty() || previousVersion.isNullOrEmpty()) return false
-
-        val (major, minor, patch) = currentVersion.split(".").mapNotNull { it.toIntOrNull() }
-        val (major2, minor2, patch2) = previousVersion.split(".").mapNotNull { it.toIntOrNull() }
-
-        return when {
-            major > major2 -> false
-            major < major2 -> true
-            minor > minor2 -> false
-            minor < minor2 -> true
-            patch > patch2 -> false
-            patch < patch2 -> true
-            else -> false // equal, or something went wrong, either way it's best to assume it's false.
-        }
+        return if (isPortReleaseNewer(currentVersion, newest.tagName)) newest.tagName else null
     }
 
     private data class Release(

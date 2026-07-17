@@ -46,7 +46,6 @@ object PetKeybinds : Module(
             if (screen is AbstractContainerScreen<*> && onClick(screen, input.key)) cancel()
         }
     }
-
     private fun onClick(screen: AbstractContainerScreen<*>, keyCode: Int): Boolean {
         val (current, total) = petsRegex.find(screen.title.string)?.destructured?.let {
             (it.component1().toIntOrNull() ?: 1) to (it.component2().toIntOrNull() ?: 1)

@@ -1,5 +1,21 @@
 .idea/
 .gradle/
+.kotlin/
+*.iml
+*.log
 
 build/
 run/
+out/
+
+# Never publish local/private integration or instance data.
+dna-port/
+dna-addon/
+.minecraft/
+logs/
+screenshots/
+saves/
+.env
+.env.*
+*.key
+*.pem

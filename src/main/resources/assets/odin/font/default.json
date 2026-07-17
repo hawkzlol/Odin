@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "odin:default.ttf",
+      "size": 20.0,
+      "oversample": 2.0,
+      "shift": [0.0, 9.01]
+    }
+  ]
+}
