@@ -6,10 +6,11 @@ import com.odtheking.odin.clickgui.ClickGUI
 import com.odtheking.odin.clickgui.HudManager
 import com.odtheking.odin.clickgui.settings.AlwaysActive
 import com.odtheking.odin.clickgui.settings.impl.*
-import com.odtheking.odin.events.LevelEvent
+import com.odtheking.odin.events.ChatPacketEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Category
 import com.odtheking.odin.features.Module
+import com.odtheking.odin.features.ModuleManager
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.alert
 import com.odtheking.odin.utils.getChatBreak
@@ -28,6 +29,10 @@ import java.net.URI
 import kotlin.math.max
 import kotlin.math.round
 
+internal val PROFILE_ID_MESSAGE_REGEX = Regex("Profile ID:\\s*(.{36})")
+
+internal fun isProfileIdMessage(message: String): Boolean = PROFILE_ID_MESSAGE_REGEX.matches(message)
+
 @AlwaysActive
 object ClickGUIModule : Module(
     name = "Click GUI",
@@ -44,6 +49,7 @@ object ClickGUIModule : Module(
 
     private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.gui.setScreen(HudManager) }
     val devMessage by BooleanSetting("Developer Message", false, desc = "Sends development related messages to the chat.")
+    private var firstJoin by BooleanSetting("First join", true, "").hide()
 
     override fun onKeybind() {
         toggle()
@@ -75,25 +81,49 @@ object ClickGUIModule : Module(
             latestVersionNumber = checkNewerVersion(OdinMod.version.toString())
         }
 
-        on<LevelEvent.Load> {
-           if (hasSentUpdateMessage || latestVersionNumber == null) return@on
+        on<ChatPacketEvent> {
+            if (!isProfileIdMessage(value)) return@on
+
+            if (firstJoin) {
+                firstJoin = false
+                ModuleManager.saveConfigurations()
+                modMessage(
+                    Component.literal(getChatBreak())
+                        .append(Component.literal("""
+                            §7Thanks for installing §3Odin ${OdinMod.version}§7!
+
+                            §7Use §d§l/od §r§7to access GUI settings.
+
+                            §7This is the unofficial Minecraft 26.2 port.
+                        """.trimIndent()))
+                        .append(Component.literal("\n"))
+                        .append(
+                            Component.literal("§bReport port issues on GitHub").withStyle {
+                                it.withClickEvent(ClickEvent.OpenUrl(URI("https://github.com/hawkzlol/Odin/issues")))
+                                    .withHoverEvent(HoverEvent.ShowText(Component.literal("https://github.com/hawkzlol/Odin/issues")))
+                            },
+                        )
+                        .append(Component.literal("\n"))
+                        .append(Component.literal(getChatBreak())),
+                    "",
+                )
+            }
+
+            if (hasSentUpdateMessage || latestVersionNumber == null) return@on
             hasSentUpdateMessage = true
 
-            modMessage("""
-            ${getChatBreak()}
-
-            §3Odin update available: §f$latestVersionNumber
-            """.trimIndent(), "")
-
-            modMessage(Component.literal("§b$PORT_RELEASE_PAGE").withStyle {
-                it.withClickEvent(ClickEvent.OpenUrl(URI(PORT_RELEASE_PAGE)))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal(PORT_RELEASE_PAGE)))
-            }, "")
-            modMessage("""
-
-            ${getChatBreak()}§r
-
-            """.trimIndent(), "")
+            modMessage(
+                Component.literal(getChatBreak())
+                    .append(Component.literal("§3Odin 26.2 port update available: §f$latestVersionNumber\n\n"))
+                    .append(
+                        Component.literal("§bGitHub release").withStyle {
+                            it.withClickEvent(ClickEvent.OpenUrl(URI(PORT_RELEASE_PAGE)))
+                                .withHoverEvent(HoverEvent.ShowText(Component.literal(PORT_RELEASE_PAGE)))
+                        },
+                    )
+                    .append(Component.literal("\n\n${getChatBreak()}§r")),
+                "",
+            )
             alert("Odin Update Available")
         }
     }

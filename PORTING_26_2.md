@@ -4,9 +4,9 @@
 
 - Upstream repository: `odtheking/Odin`
 - Public port branch: `mc-26.2`
-- Current upstream baseline: `32222f8ecd2bbe8a6577d5051c3bca588a1f435d`
+- Current upstream baseline: `a235cafdcd449f6f16813ac7aac9dcecd2be7a88`
 - Minecraft target: 26.2 only (`~26.2`)
-- Public port version: `0.2.3+mc26.2.port.1`
+- Public port version: `0.2.3+mc26.2.port.2`
 - Java: 25
 - Fabric Loader: 0.19.3
 - Fabric API: 0.154.2+26.2
@@ -60,11 +60,24 @@ Fourteen changed Kotlin paths normalize to exact upstream content. Eleven retain
 26.2 API substitutions, formatting cleanup, or pure helper extraction for tests. No upstream 26.1
 rendering implementation or dependency was imported.
 
+The second incremental sync reviewed upstream changes from
+`32222f8ecd2bbe8a6577d5051c3bca588a1f435d` through
+`a235cafdcd449f6f16813ac7aac9dcecd2be7a88`: three commits and eight net-modified paths.
+It adds UUID-keyed developer-player data and the current service schema, corrected `/oddev
+roomdata` argument semantics, one-time profile-join messaging, queued client-chat insertion, and
+visible first-click protection feedback for valid terminal clicks.
+
+The public port deliberately keeps upstream startup telemetry removed, retains fork-only release
+routing, and does not echo the password-bearing developer payload into chat. Minecraft-facing
+screen/chat calls retain their verified 26.2 forms. An intermediate upstream Water Solver crouch
+guard was reverted again by upstream HEAD, so there is no net Water Solver change to import.
+
 ## Validation
 
 - Clean Java 25 build: passed.
-- Unit tests: ten suites, 35 tests, zero failures/errors/skips, including the public port-release
-  version parser and updater routing.
+- Unit tests: thirteen suites, 41 tests, zero failures/errors/skips, including UUID developer-player
+  payloads, profile-join gating, room-coordinate semantics, first-click protection boundaries, and
+  the public port-release version parser/updater routing.
 - Forced Vulkan startup: Minecraft reached the title screen, loaded Odin resources and the managed
   Inter atlas, remained settled for 40 client ticks, and stopped cleanly.
 - Vulkan device used for the validation run: NVIDIA Vulkan 1.4.341.

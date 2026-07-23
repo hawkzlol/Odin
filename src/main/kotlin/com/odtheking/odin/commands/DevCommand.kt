@@ -32,6 +32,9 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.phys.BlockHitResult
 
+internal fun resolveRoomTileCoordinate(explicitTile: Int?, playerBlockCoordinate: Int): Int =
+    explicitTile ?: ((playerBlockCoordinate + 201) shr 5)
+
 val devCommand = Commodore("oddev") {
 
     literal("ws") {
@@ -69,7 +72,7 @@ val devCommand = Commodore("oddev") {
         val z = zSize ?: 0.6f
         modMessage("Sending data... name: $name, x: $x, y: $y, z: $z")
         OdinMod.scope.launch {
-            modMessage(postData(DEV_SERVER, buildDevBody(name, Colors.WHITE, x, y, z, false, " ", password)).getOrNull())
+            modMessage(postData(DEV_SERVER, buildDevBody(name, x, y, z, " ", password)).getOrNull())
         }
     }
 
@@ -176,8 +179,8 @@ val devCommand = Commodore("oddev") {
 
     literal("roomdata").runs { x: Int?, z: Int? ->
         val player = mc.player ?: return@runs
-        val tileX = ((x ?: player.blockX) + 201) shr 5
-        val tileZ = ((z ?: player.blockZ) + 201) shr 5
+        val tileX = resolveRoomTileCoordinate(x, player.blockX)
+        val tileZ = resolveRoomTileCoordinate(z, player.blockZ)
 
         val roomPos = IVec2(tileX * 32 - 185, tileZ * 32 - 185)
         val chunk = mc.level?.getChunk(roomPos.x shr 4, roomPos.z shr 4) ?: return@runs
