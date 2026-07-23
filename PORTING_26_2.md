@@ -13,6 +13,7 @@
 - Fabric Loom: 1.16.3
 - Kotlin: 2.4.0
 - Fabric Language Kotlin: 1.13.12+kotlin.2.4.0
+- Mod Menu: 20.0.1, resolved from its published Modrinth Maven artifact
 
 Upstream remains the authority for ordinary Odin behavior. Minecraft 26.2 generated sources and
 Fabric's 26.2 APIs are the authority for target-specific code.

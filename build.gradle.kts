@@ -30,7 +30,7 @@ dependencies {
         include("com.github.stivais:Commodore:$it")
     }
 
-    compileOnly("com.terraformersmc:modmenu:${property("modmenu_version")}")
+    compileOnly("maven.modrinth:modmenu:${property("modmenu_version")}")
 
     compileOnly("maven.modrinth:iris:${property("iris")}")
 
