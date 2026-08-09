@@ -67,7 +67,7 @@ object OdinMod : ClientModInitializer {
 
         listOf(
             this, LocationUtils, TickTasks, KuudraUtils,
-            SkyblockPlayer, ServerUtils, EventDispatcher,
+            ActionBarListener, ServerUtils, EventDispatcher,
             DungeonListener, PartyUtils, TerminalUtils,
             DungeonUtils, SplitsManager, DungeonScan,
             IrisCompatability, RenderBatchManager,

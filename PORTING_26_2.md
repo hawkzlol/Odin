@@ -4,9 +4,9 @@
 
 - Upstream repository: `odtheking/Odin`
 - Public port branch: `mc-26.2`
-- Current upstream baseline: `a235cafdcd449f6f16813ac7aac9dcecd2be7a88`
+- Current upstream baseline: `6132ac938519cfafa43a06b422c4dace0a3b0297`
 - Minecraft target: 26.2 only (`~26.2`)
-- Public port version: `0.2.3+mc26.2.port.2`
+- Public port version: `0.3.0+mc26.2.port.1`
 - Java: 25
 - Fabric Loader: 0.19.3
 - Fabric API: 0.154.2+26.2
@@ -73,15 +73,28 @@ routing, and does not echo the password-bearing developer payload into chat. Min
 screen/chat calls retain their verified 26.2 forms. An intermediate upstream Water Solver crouch
 guard was reverted again by upstream HEAD, so there is no net Water Solver change to import.
 
+The third incremental sync reviewed all 17 commits and 33 changed paths from
+`a235cafdcd449f6f16813ac7aac9dcecd2be7a88` through
+`6132ac938519cfafa43a06b422c4dace0a3b0297`. It ports the current Croesus menu and Wither Essence
+identifiers, bounded chat-command names, registry-aware Starts With targets, automatic terminal GUI
+scale, tick-scheduled positional messages, vitality parsing/HUD controls, successful-interaction
+Water Solver handling, detailed TPS statistics, server-lag-aware first-click protection, the
+ClickGUI chevron correction, secret-timer coloring, and the 289 Fairy Souls quiz answer. The new
+`MultiPlayerGameMode.useItemOn` injection uses the exact 26.2 descriptor, and the renamed action-bar
+listener retains the target packet and player APIs. Upstream's version and JitPack Java changes are
+represented as `0.3.0+mc26.2.port.1` and Java 25.
+
 ## Validation
 
 - Clean Java 25 build: passed.
-- Unit tests: thirteen suites, 41 tests, zero failures/errors/skips, including UUID developer-player
+- Unit tests: thirteen suites, 44 tests, zero failures/errors/skips, including UUID developer-player
   payloads, profile-join gating, room-coordinate semantics, first-click protection boundaries, and
   the public port-release version parser/updater routing.
-- Forced Vulkan startup: Minecraft reached the title screen, loaded Odin resources and the managed
-  Inter atlas, remained settled for 40 client ticks, and stopped cleanly.
-- Vulkan device used for the validation run: NVIDIA Vulkan 1.4.341.
+- Forced Vulkan and OpenGL startup: Minecraft reached the title screen, loaded Odin resources and
+  the managed Inter atlas, rendered ClickGUI, force-loaded the new interaction Mixin target, and
+  stopped cleanly on both backends.
+- Graphics devices used for the validation runs: NVIDIA Vulkan 1.4.341 and OpenGL 3.3.0, driver
+  610.88.
 - Static audit: no raw OpenGL/Vulkan, NanoVG, backend cast, removed buffer/PIP API, development
   smoke harness, stale Minecraft 26.1 dependency, or obsolete map resource.
 - JAR audit: client metadata, Mixins, access widener, fonts, images, map assets, and Commodore are
@@ -89,6 +102,8 @@ guard was reverted again by upstream HEAD, so there is no net Water Solver chang
 - Public-distribution privacy: the upstream startup username telemetry is removed, support and
   update links point to this fork, and update candidates must use the compatible
   `+mc26.2.port.N` version suffix.
+- Candidate artifact: `build/libs/Odin-0.3.0+mc26.2.port.1.jar`, 4,182,290 bytes, SHA-256
+  `5E7EBAF00A183D70D022CB736BCD345B52E7260BFC89E3202BA6F629E78D6C9F`.
 
 ## Runtime limits
 

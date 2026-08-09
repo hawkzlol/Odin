@@ -5,10 +5,15 @@ import com.google.common.primitives.SignedBytes
 import com.odtheking.odin.OdinMod.mc
 import com.odtheking.odin.events.GuiEvent
 import com.odtheking.odin.events.PacketEvent
+import com.odtheking.odin.features.impl.boss.TerminalSimulator
 import com.odtheking.odin.features.impl.boss.TerminalSolver.firstClickProt
+import com.odtheking.odin.features.impl.boss.TerminalSolver.firstClickProtTicks
+import com.odtheking.odin.features.impl.boss.TerminalSolver.shouldFirstClickProtWithTicks
 import com.odtheking.odin.features.impl.boss.termsim.TermSimGUI
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.clickSlot
+import com.odtheking.odin.utils.skyblock.Island
+import com.odtheking.odin.utils.skyblock.LocationUtils
 import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalTypes
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
@@ -20,14 +25,27 @@ import org.lwjgl.glfw.GLFW
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.min
 
-internal fun isFirstClickProtected(timeOpened: Long, now: Long, protectionMs: Long): Boolean =
-    now - timeOpened < protectionMs
+internal fun isFirstClickProtected(
+    timeOpened: Long,
+    now: Long,
+    protectionMs: Long,
+    disableForTermSim: Boolean = false,
+    isTermSim: Boolean = false,
+    useServerTicks: Boolean = false,
+    isSingleplayer: Boolean = false,
+    ticksOpened: Int = -1,
+    protectionTicks: Int = 8,
+): Boolean =
+    !(disableForTermSim && isTermSim) &&
+        (now - timeOpened < protectionMs ||
+            (!isSingleplayer && useServerTicks && ticksOpened < protectionTicks))
 
 abstract class TerminalHandler(val type: TerminalTypes) {
     val solution: CopyOnWriteArrayList<Int> = CopyOnWriteArrayList()
     val timeOpened = System.currentTimeMillis()
     var isClicked = false
     var windowCount = 0
+    var ticksOpened = -1
 
     open fun updateSlot(event: GuiEvent.SlotUpdate) {
         if (event.packet.slot !in 0 until type.windowSize) return
@@ -80,5 +98,15 @@ abstract class TerminalHandler(val type: TerminalTypes) {
 
     open fun canClick(slotIndex: Int, button: Int): Boolean = slotIndex in solution
 
-    fun shouldProtect(): Boolean = isFirstClickProtected(timeOpened, System.currentTimeMillis(), firstClickProt.toLong())
+    fun shouldProtect(): Boolean = isFirstClickProtected(
+        timeOpened = timeOpened,
+        now = System.currentTimeMillis(),
+        protectionMs = firstClickProt.toLong(),
+        disableForTermSim = TerminalSimulator.disableFirstClickProtection,
+        isTermSim = mc.gui.screen() is TermSimGUI,
+        useServerTicks = shouldFirstClickProtWithTicks,
+        isSingleplayer = LocationUtils.isCurrentArea(Island.SinglePlayer),
+        ticksOpened = ticksOpened,
+        protectionTicks = firstClickProtTicks,
+    )
 }

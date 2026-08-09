@@ -6,6 +6,8 @@ import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.hasGlint
 import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalTypes
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
+import net.minecraft.core.component.DataComponents
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
@@ -20,7 +22,7 @@ class StartsWithHandler(private val letter: String): TerminalHandler(TerminalTyp
             val screenHandler = (mc.gui.screen() as? ContainerScreen)?.menu
             if (it.first != screenHandler?.containerId) {
                 val item = items[it.second].item
-                if (item == Items.NETHER_STAR || item == Items.EXPERIENCE_BOTTLE) clickedSlots.add(it.second)
+                if (item in enchantOverrides) clickedSlots.add(it.second)
                 clickedSlot = null
             }
         }
@@ -28,8 +30,7 @@ class StartsWithHandler(private val letter: String): TerminalHandler(TerminalTyp
         return items.mapIndexedNotNull { index, item ->
             if (item.hoverName.string.startsWith(letter, true) &&
                 index !in clickedSlots &&
-                (!item.hasGlint() || item.item == Items.NETHER_STAR || item.item == Items.EXPERIENCE_BOTTLE)
-            ) index else null
+                (!item.hasGlint() || item.item in enchantOverrides)) index else null
         }
     }
 
@@ -42,4 +43,8 @@ class StartsWithHandler(private val letter: String): TerminalHandler(TerminalTyp
     }
 
     override fun renderSlot(slotIndex: Int): Pair<Color, String?> = TerminalSolver.startsWithColor to null
+
+    companion object {
+        private val enchantOverrides = BuiltInRegistries.ITEM.filter { it.components().has(DataComponents.ENCHANTMENT_GLINT_OVERRIDE) } + Items.GOLDEN_APPLE
+    }
 }

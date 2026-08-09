@@ -18,7 +18,7 @@ public class ScreenEffectRendererMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private static void onRenderFireOverlay(PoseStack poseStack, SubmitNodeCollector submitNodeCollector, TextureAtlasSprite textureAtlasSprite, CallbackInfo ci) {
+    private static void onRenderFireOverlay(PoseStack poseStack, SubmitNodeCollector submitNodeCollector, TextureAtlasSprite sprite, CallbackInfo ci) {
         if (RenderOptimizer.shouldDisableFireOverlay()) ci.cancel();
     }
 }

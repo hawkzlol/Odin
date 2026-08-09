@@ -21,6 +21,7 @@
     "mixins.LocalPlayerMixin",
     "mixins.MinecraftMixin",
     "mixins.MouseHandlerMixin",
+    "mixins.MultiPlayerGameModeMixin",
     "mixins.ScreenEffectRendererMixin",
     "mixins.ScreenMixin"
   ],
