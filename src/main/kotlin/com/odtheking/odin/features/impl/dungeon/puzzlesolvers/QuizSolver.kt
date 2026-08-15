@@ -20,7 +20,16 @@ object QuizSolver {
     private var triviaOptions: MutableList<TriviaAnswer> = MutableList(3) { TriviaAnswer(null, false) }
     private data class TriviaAnswer(var blockPos: BlockPos?, var isCorrect: Boolean)
 
+    var timer: Triple<Int, Int, Int> = Triple(0, 0, 0)
+        private set
+
+    fun onServerTick() {
+        timer = decrementQuizTimer(timer)
+    }
+
     fun onMessage(msg: String) {
+        quizTimerForMessage(msg)?.let { timer = it }
+
         if (msg.startsWith("[STATUE] Oruo the Omniscient: ") && msg.endsWith("correctly!")) {
             if (msg.contains("answered the final question")) {
                 onPuzzleComplete("Quiz")
@@ -66,5 +75,6 @@ object QuizSolver {
     fun reset() {
         triviaOptions = MutableList(3) { TriviaAnswer(null, false) }
         triviaAnswers = null
+        timer = Triple(0, 0, 0)
     }
 }

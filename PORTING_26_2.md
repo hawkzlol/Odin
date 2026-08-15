@@ -125,3 +125,46 @@ For each upstream update:
 4. Add focused regression coverage for changed pure logic.
 5. Run clean tests/builds, forbidden-API scans, JAR inspection, and a Vulkan startup check.
 6. Publish a new port revision only after the upstream HEAD is rechecked.
+
+## Incremental upstream sync (2026-08-15)
+
+The public Minecraft 26.2 port now tracks official Odin `main` through
+`5959d23266e848858d11c49e3304146de449aa35`, advancing from
+`6132ac938519cfafa43a06b422c4dace0a3b0297`. The seven-commit delta contains
+50 final changed paths, 340 insertions, and 267 deletions. The final fetch caught
+the late `5959d23` Dragon Title follow-up and it is included.
+
+Synchronized behavior includes:
+
+- Moonglade Marsh, Torrhus Canyon, and Safari island data;
+- native client scheduling and correct TermSim mouse-button forwarding;
+- event-driven cached dungeon score updates and the one-time 300-score notification;
+- Puzzle HUD preview fixes, the Quiz timer HUD, Blaze style default, and fixed-width F7 splits;
+- the canonical Dungeon Map geometry, representative preview, occupied-tile centers, current
+  background/outline handling, and interpolated player positions;
+- cleaned Wither Dragon settings plus the restored priority title, compact spawn counts, and
+  removal of unused `skipKillTime` data.
+
+Required target substitutions are retained instead of copying incompatible 26.1 calls:
+`Vec3.atCenterOf(BlockPos)`, `Blocks.DYED_TERRACOTTA.blue()`,
+`EntityTypes.PLAYER`, the non-null 26.2 slot signature, and the established managed GUI/render
+APIs. Public update routing, the compatible `+mc26.2.port.N` version scheme, and privacy guards
+remain intact.
+
+Validation:
+
+- Untouched official `5959d23` Java 25 `clean build`: PASS.
+- Public Java 25 `clean check build`: PASS; 16 suites / 51 tests / zero failures, errors, or
+  skips.
+- The corresponding primary-port build passed 15 suites / 45 tests.
+- Vulkan smoke through the map refactor: PASS on Minecraft 26.2 / NVIDIA 610.88; the client
+  selected Vulkan, reached the title screen, loaded the managed Inter atlas, rendered the new map
+  preview, emitted the success marker, and stopped cleanly.
+- The final two-file M7 follow-up landed after that runtime run and passed clean compilation/tests;
+  it changes no startup or graphics architecture.
+- Static/JAR audit: no raw OpenGL/Vulkan, NanoVG, backend cast, obsolete buffer/PIP API, stale 26.1
+  target, temporary smoke class, native library, or unexpected nested dependency.
+
+Candidate artifact: `build/libs/Odin-0.3.1+mc26.2.port.1.jar`, 4,186,423 bytes,
+SHA-256 `712301FBBD51BC2306FDB85E71A655FDED694F330FA5C865857B3159DA3C0F34`.
+It targets Minecraft `~26.2`, requires Java 25, contains the client entry point, Mixin
