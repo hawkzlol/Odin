@@ -9,7 +9,7 @@ import com.odtheking.odin.utils.render.RenderConsumer
 import com.odtheking.odin.utils.skyblock.dungeon.Floor
 import com.odtheking.odin.utils.skyblock.dungeon.terminals.terminalhandler.TerminalHandler
 import net.fabricmc.fabric.api.client.rendering.v1.level.AbstractLevelRenderContext
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
@@ -20,6 +20,9 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.inventory.AbstractContainerMenu
+import net.minecraft.world.inventory.Slot
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
@@ -61,7 +64,8 @@ interface LevelEvent : Event {
 }
 
 abstract class RenderEvent(open val context: AbstractLevelRenderContext) : Event {
-    class Extract(override val context: LevelExtractionContext, val consumer: RenderConsumer) : RenderEvent(context)
+    class Extract(override val context: LevelRenderContext, val consumer: RenderConsumer) : RenderEvent(context)
+    class Last(override val context: LevelRenderContext) : RenderEvent(context)
 }
 
 abstract class PartyEvent(val members: List<String>) : Event {
@@ -81,3 +85,5 @@ class CheckmarkUpdateEvent(val room: DungeonRoom, val checkmark: MapCheckmark) :
 class SecretsUpdateEvent(val room: DungeonRoom, val foundSecrets: Int) : Event
 
 object LocationChangeEvent : Event
+object ScreenCloseEvent : Event
+class SetSlotEvent(val slotIndex: Int, val itemStack: ItemStack, val slots: List<Slot>, val menu: AbstractContainerMenu) : Event

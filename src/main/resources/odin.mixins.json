@@ -26,6 +26,7 @@
     "mixins.ScreenMixin"
   ],
   "mixins": [
+    "mixins.AbstractContainerMenuMixin",
     "mixins.ConnectionMixin",
     "mixins.EntityMixin",
     "mixins.LevelChunkMixin",
