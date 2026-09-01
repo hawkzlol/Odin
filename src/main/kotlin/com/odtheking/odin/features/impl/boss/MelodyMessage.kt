@@ -97,7 +97,7 @@ object MelodyMessage : Module(
         }
 
         on<SetSlotEvent> {
-            if (broadcast || melodyProgress) onSlotUpdate(this)
+            if (broadcast || melodyProgress) onSlotUpdate()
         }
 
         on<LevelEvent.Load> {
@@ -125,13 +125,13 @@ object MelodyMessage : Module(
         }
     }
 
-    private fun onSlotUpdate(event: SetSlotEvent) {
+    private fun SetSlotEvent.onSlotUpdate() {
         val term = TerminalUtils.currentTerm ?: return
         if (DungeonUtils.getF7Phase() != M7Phases.P3 || term.type != TerminalTypes.MELODY || mc.gui.screen() is TermSimGUI) return
 
-        val item = event.itemStack.item
+        val item = itemStack.item
         if (item == Items.DYED_TERRACOTTA.lime()) {
-            val position = event.slotIndex / 9
+            val position = slotIndex / 9
             if (lastSent.clay == position) return
             if (broadcast) melodyWebSocket.send(update(1, position))
             if (melodyProgress) clayProgress[position]?.let { sendCommand("pc $it") }
@@ -139,7 +139,7 @@ object MelodyMessage : Module(
             return
         }
         if (!broadcast || !item.equalsOneOf(Items.STAINED_GLASS_PANE.magenta(), Items.STAINED_GLASS_PANE.lime())) return
-        val index = mapToRange(event.slotIndex) ?: return
+        val index = mapToRange(slotIndex) ?: return
         val meta = when (item) {
             Items.STAINED_GLASS_PANE.magenta() -> {
                 if (lastSent.purple == index) return
