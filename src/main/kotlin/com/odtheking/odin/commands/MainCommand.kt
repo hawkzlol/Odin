@@ -22,6 +22,11 @@ val mainCommand = Commodore("odin", "od") {
         mc.schedule { mc.gui.setScreen(HudManager) }
     }
 
+    literal("forcedungeons").runs {
+        DungeonUtils.forceDungeons = !DungeonUtils.forceDungeons
+        modMessage("Force dungeons " + (if (DungeonUtils.forceDungeons) "enabled" else "disabled") + ".")
+    }
+
     literal("tps").runs {
         modMessage(ServerUtils.getTpsString())
     }

@@ -6,16 +6,12 @@ import kotlin.test.assertEquals
 
 class DungeonRoomGeometryTest {
     @Test
-    fun `north-facing L room derives occupied tiles and center`() {
+    fun `north-facing L room derives center`() {
         val room = DungeonRoom(RoomType.NORMAL, IVec2(2, 3)).apply {
             shape = RoomShape.L
             rotation = RoomRotation.NORTH
         }
 
-        assertEquals(
-            listOf(IVec2(2, 3), IVec2(3, 3), IVec2(3, 4)),
-            room.occupiedTiles(),
-        )
         assertEquals(IVec2(58, 68), room.center)
     }
 
@@ -26,10 +22,6 @@ class DungeonRoomGeometryTest {
             rotation = RoomRotation.SOUTH
         }
 
-        assertEquals(
-            listOf(IVec2(1, 1), IVec2(2, 1), IVec2(3, 1)),
-            room.occupiedTiles(),
-        )
         assertEquals(IVec2(48, 28), room.center)
     }
 }

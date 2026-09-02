@@ -33,14 +33,17 @@ internal fun calculateDungeonBonusScore(
 
 object DungeonUtils {
 
+    /** Runtime override for servers that emulate Hypixel dungeons. */
+    var forceDungeons: Boolean = false
+
     inline val inDungeons: Boolean
-        get() = LocationUtils.isCurrentArea(Island.Dungeon)
+        get() = forceDungeons || LocationUtils.isCurrentArea(Island.Dungeon)
 
     inline val inClear: Boolean
         get() = inDungeons && !inBoss
 
     inline val inBoss: Boolean
-        get() = DungeonListener.inBoss
+        get() = !forceDungeons && DungeonListener.inBoss
 
     inline val floor: Floor?
         get() = DungeonListener.floor

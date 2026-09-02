@@ -1,6 +1,7 @@
 package com.odtheking.odin.features.impl.dungeon.map.tile
 
 import com.odtheking.odin.utils.IVec2
+import com.odtheking.odin.utils.Colors
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -8,7 +9,7 @@ class DungeonDoorTest {
 
     @Test
     fun `horizontal door derives tile and world coordinates`() {
-        val door = DungeonDoor(IVec2(2, 3), DoorRotation.Horizontal, DoorType.Wither)
+        val door = DungeonDoor(IVec2(2, 3), DoorRotation.Horizontal, DoorType.Wither, Colors.WHITE)
 
         assertEquals(20, door.originTileIndex)
         assertEquals(21, door.destinationTileIndex)
@@ -18,7 +19,7 @@ class DungeonDoorTest {
 
     @Test
     fun `vertical door derives tile and world coordinates`() {
-        val door = DungeonDoor(IVec2(2, 3), DoorRotation.Vertical, DoorType.Normal)
+        val door = DungeonDoor(IVec2(2, 3), DoorRotation.Vertical, DoorType.Normal, Colors.WHITE)
 
         assertEquals(20, door.originTileIndex)
         assertEquals(26, door.destinationTileIndex)
