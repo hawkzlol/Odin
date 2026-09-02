@@ -167,4 +167,24 @@ Validation:
 
 Candidate artifact: `build/libs/Odin-0.3.1+mc26.2.port.1.jar`, 4,186,423 bytes,
 SHA-256 `712301FBBD51BC2306FDB85E71A655FDED694F330FA5C865857B3159DA3C0F34`.
-It targets Minecraft `~26.2`, requires Java 25, contains the client entry point, Mixin
+It targets Minecraft `~26.2`, requires Java 25, and contains the client entry point, Mixin JSON,
+access widener, shaders, fonts, images, and managed-renderer resources.
+
+## Official Odin 0.3.2 synchronization (2026-09-02)
+
+The port now contains the complete official `0.3.2` range through
+`edbeb9a2d7ffb1082a1126715d1f03a21587fb54` (21 commits after the previous `5959d23` baseline).
+This includes room-secret and Dungeon Map WebSocket support, Croesus/Bonzo/Vesuvius fixes,
+waypoint-pack URL/compressed imports, terminal prediction changes, Storm and Melody HUD additions,
+split/puzzle timer options, and the Blaze level-matching fix.
+
+Compatibility resolutions retain the 26.2 extraction renderer, colored item-family APIs,
+`mc.gui` screen ownership, non-null slots, and a verified `Gui.setScreen(Screen)` lifecycle Mixin.
+The `/od forcedungeons` emulated-server override remains included.
+
+Clean Java 25 test/build validation passes 16 suites / 51 tests. The candidate artifact is
+`build/libs/Odin-0.3.2+mc26.2.port.1.jar`, 4,203,973 bytes, SHA-256
+`EED4E500AE3A3CD9F2EF9B468DFC9CF07D8A13ABDE7BEF7B487BEFA5851583A5`. JAR metadata targets
+Minecraft `~26.2` and Java 25, and contains both new verified menu/screen lifecycle Mixins. No DNA
+source or artifact is present. This refresh did not launch Minecraft, so live 0.3.2 feature behavior
+is not claimed as runtime-tested.
