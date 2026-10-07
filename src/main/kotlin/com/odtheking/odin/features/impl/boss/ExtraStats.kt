@@ -1,9 +1,9 @@
 package com.odtheking.odin.features.impl.boss
 
+import com.odtheking.odin.clickgui.settings.impl.EnumSelectorSetting as SelectorSetting
 import com.odtheking.odin.clickgui.settings.impl.BooleanSetting
-import com.odtheking.odin.clickgui.settings.impl.SelectorSetting
-import com.odtheking.odin.events.ChatMessageEvent
 import com.odtheking.odin.events.LevelEvent
+import com.odtheking.odin.events.MessageEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.*
@@ -19,7 +19,15 @@ object ExtraStats : Module(
     private val showBits by BooleanSetting("Show Bits", true, desc = "Show bits earned.")
     private val showClassEXP by BooleanSetting("Show Class EXP", true, desc = "Show class experience.")
     private val showCombatStats by BooleanSetting("Show Combat Stats", true, desc = "Show damage, enemy kills and healing.")
-    private val teamStats by SelectorSetting("Show Team Stats", "Both", arrayListOf("Off", "Personal", "Team", "Both"), desc = "Toggle how show team stats.")
+    private val teamStats by SelectorSetting("Show Team Stats", TeamStats.BOTH, desc = "Toggle how show team stats.")
+
+    enum class TeamStats(val personal: Boolean = false, val team: Boolean = false) {
+        OFF,
+        PERSONAL(personal = true),
+        TEAM(team = true),
+        BOTH(personal = true, team = true)
+    }
+
     private val showTeammates by BooleanSetting("Show Teammates", false, desc = "Show teammates.")
 
     private val extraStats = PostDungeonStats()
@@ -55,68 +63,67 @@ object ExtraStats : Module(
     )
 
     init {
-        on<ChatMessageEvent> {
+        on<MessageEvent.Chat> {
             if (!DungeonUtils.inDungeons) return@on
 
-            if (cancelRegexes.any { it.matches(value) }) cancel()
+            if (extraStatsRegex.matches(message)) return@on sendCommand("showextrastats")
+            if (cancelRegexes.any { it.matches(message) }) cancel()
 
-            if (extraStatsRegex.matches(value)) return@on sendCommand("showextrastats")
-
-            terminalCompleteRegex.find(value)?.let {
+            terminalCompleteRegex.find(message)?.let {
                 extraStats.timePB = it.groupValues[3].isNotEmpty()
                 extraStats.bossKilled = it.groupValues[1]
                 return@on
             }
 
-            teamScoreRegex.find(value)?.let {
+            teamScoreRegex.find(message)?.let {
                 extraStats.score = it.groupValues[1].toIntOrNull() ?: 0
                 extraStats.scorePB = it.groupValues[3].isNotEmpty()
                 extraStats.scoreLetter = it.groupValues[2]
                 return@on
             }
 
-            expRegex.find(value)?.let {
+            expRegex.find(message)?.let {
                 extraStats.xp.add("§3${it.groupValues[1].replace("Experience", "EXP").replace("Catacombs", "Cata")}")
                 return@on
             }
 
-            bitsRegex.find(value)?.let {
+            bitsRegex.find(message)?.let {
                 extraStats.bits = it.groupValues[1]
                 return@on
             }
 
-            damageRegex.find(value)?.let {
+            damageRegex.find(message)?.let {
                 extraStats.damagePB = it.groupValues[3].isNotEmpty()
                 extraStats.damage = formatNumber(it.groupValues[2]) + if (extraStats.damagePB) "(NEW PB!)" else ""
                 extraStats.combatStats.add("§e${it.groupValues[1]}")
                 return@on
             }
 
-            healRegex.find(value)?.let {
+            healRegex.find(message)?.let {
                 extraStats.healPB = it.groupValues[3].isNotEmpty()
                 extraStats.heal = formatNumber(it.groupValues[2]) + if (extraStats.healPB) "(NEW PB!)" else ""
                 extraStats.combatStats.add("§a${it.groupValues[1]}")
                 return@on
             }
 
-            enemyKillRegex.find(value)?.let {
+            enemyKillRegex.find(message)?.let {
                 extraStats.enemyKillPB = it.groupValues[3].isNotEmpty()
                 extraStats.enemyKill = (it.groupValues[2].toIntOrNull() ?: 0).toString() + if (extraStats.enemyKillPB) "(NEW PB!)" else ""
                 extraStats.combatStats.add(1, "§b${it.groupValues[1]}")
                 return@on
             }
 
-            deathsRegex.find(value)?.let {
+            deathsRegex.find(message)?.let {
                 extraStats.deaths = it.groupValues[2].toIntOrNull() ?: 0
-                if (teamStats.equalsOneOf(1, 3)) extraStats.skillStats.add("§c${it.groupValues[1]}")
+                if (teamStats.personal) extraStats.skillStats.add("§c${it.groupValues[1]}")
                 return@on
             }
 
-            secretsRegex.find(value)?.let {
+            secretsRegex.find(message)?.let {
                 extraStats.secretsFound = it.groupValues[2].toIntOrNull() ?: 0
-                if (teamStats.equalsOneOf(1, 3)) extraStats.skillStats.add(0, "§b${it.groupValues[1]}")
-                if (teamStats == 3) extraStats.skillStats.add("")
-                if (teamStats.equalsOneOf(2, 3)) {
+                if (teamStats.personal) extraStats.skillStats.add(0, "§b${it.groupValues[1]}")
+                if (teamStats == TeamStats.BOTH) extraStats.skillStats.add("")
+                if (teamStats.team) {
                     extraStats.skillStats.add("§bTeam Secrets Found: ${DungeonUtils.secretCount}")
                     extraStats.skillStats.add("§6Crypt: ${DungeonUtils.cryptCount}")
                     extraStats.skillStats.add("§cTeam Deaths: ${DungeonUtils.deathCount}")
@@ -161,12 +168,12 @@ object ExtraStats : Module(
             ).append("\n")
         }
 
-        if (teamStats != 0) {
+        if (teamStats != TeamStats.OFF) {
             val statsText = when (teamStats) {
-                1 -> "§b${extraStats.secretsFound}§r-§c${extraStats.deaths}" // Personal
-                2 -> "§b${DungeonUtils.secretCount}§r-§6${DungeonUtils.cryptCount}§r-§c${DungeonUtils.deathCount}" // Team
-                3 -> "§b${extraStats.secretsFound}§r-§c${extraStats.deaths} §r/ §b${DungeonUtils.secretCount}§r-§6${DungeonUtils.cryptCount}§r-§c${DungeonUtils.deathCount}" // Both
-                else -> ""
+                TeamStats.PERSONAL -> "§b${extraStats.secretsFound}§r-§c${extraStats.deaths}"
+                TeamStats.TEAM -> "§b${DungeonUtils.secretCount}§r-§6${DungeonUtils.cryptCount}§r-§c${DungeonUtils.deathCount}"
+                TeamStats.BOTH -> "§b${extraStats.secretsFound}§r-§c${extraStats.deaths} §r/ §b${DungeonUtils.secretCount}§r-§6${DungeonUtils.cryptCount}§r-§c${DungeonUtils.deathCount}"
+                TeamStats.OFF -> ""
             }
             message.append(
                 Component.literal(getCenteredText(statsText)).withStyle {

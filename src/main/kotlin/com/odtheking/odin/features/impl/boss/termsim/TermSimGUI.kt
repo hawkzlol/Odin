@@ -19,6 +19,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.inventory.Slot
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
@@ -39,7 +40,7 @@ open class TermSimGUI(
     Inventory(mc.player!!, PlayerEquipment(mc.player!!)),
     Component.literal(name)
 ) {
-    val blackPane = ItemStack(Items.STAINED_GLASS_PANE.black()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    val blackPane = ItemStack(Items.STAINED_GLASS_PANE.pick(DyeColor.BLACK)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
     protected val guiInventorySlots get() = menu.slots.subList(0, size)
     protected var ping = 0L
 
@@ -48,7 +49,7 @@ open class TermSimGUI(
     }
 
     fun open(terminalPing: Long = 0L) {
-        mc.gui.setScreen(this)
+        mc.setScreenAndShow(this)
         create()
         ping = terminalPing
     }
@@ -57,7 +58,7 @@ open class TermSimGUI(
         playTermSimSound()
     }
 
-    internal fun TerminalHandler.onComplete() {
+    fun TerminalHandler.onComplete() {
         ScreenCloseEvent.postAndCatch()
         TerminalEvent.Solve(this).postAndCatch()
         StartGUI.open(ping)
@@ -69,7 +70,7 @@ open class TermSimGUI(
 
     override fun slotClicked(slot: Slot, i: Int, j: Int, clickType: ContainerInput) {
         if (GuiEvent.SlotClick(this, i, j).postAndCatch()) return
-        slot.let { delaySlotClick(it, j) }
+        slot?.let { delaySlotClick(it, j) }
     }
 
     fun clickIndex(index: Int, button: Int) {
@@ -79,7 +80,7 @@ open class TermSimGUI(
 
     private fun delaySlotClick(slot: Slot, button: Int) {
         if (mc.gui.screen() == StartGUI) return slotClick(slot, button)
-        if (slot.container != inv || slot.item.item == Items.STAINED_GLASS_PANE.black()) return
+        if (slot.container != inv || slot.item.item == Items.STAINED_GLASS_PANE.pick(DyeColor.BLACK)) return
         if (ping <= 0L) return slotClick(slot, button)
         schedule((ping / 50).toInt().coerceAtLeast(0)) {
             if (mc.gui.screen() == this) slotClick(slot, button)

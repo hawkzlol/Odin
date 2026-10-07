@@ -3,16 +3,8 @@ package com.odtheking.odin.features.impl.dungeon
 import com.odtheking.odin.utils.skyblock.dungeon.calculateDungeonBonusScore
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class DungeonDeltaLogicTest {
-
-    @Test
-    fun `positional message radius compares squared distances`() {
-        assertTrue(isWithinRadius(distanceSquared = 25.0, radius = 5.0))
-        assertFalse(isWithinRadius(distanceSquared = 25.01, radius = 5.0))
-    }
 
     @Test
     fun `dungeon bonus score includes bat and caps crypts`() {
@@ -22,7 +14,7 @@ class DungeonDeltaLogicTest {
                 cryptCount = 8,
                 mimicKilled = true,
                 princeKilled = true,
-                batKilled = true,
+                batKilled = 1,
                 paulBonus = true,
             ),
         )
@@ -30,9 +22,10 @@ class DungeonDeltaLogicTest {
 
     @Test
     fun `bat contributes exactly one bonus point`() {
-        val withoutBat = calculateDungeonBonusScore(5, true, true, false, false)
-        val withBat = calculateDungeonBonusScore(5, true, true, true, false)
+        val withoutBat = calculateDungeonBonusScore(5, true, true, 0, false)
+        val withBat = calculateDungeonBonusScore(5, true, true, 1, false)
 
         assertEquals(withoutBat + 1, withBat)
+        assertEquals(withoutBat + 3, calculateDungeonBonusScore(5, true, true, 3, false))
     }
 }

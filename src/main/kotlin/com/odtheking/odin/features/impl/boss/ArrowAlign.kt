@@ -1,17 +1,15 @@
 package com.odtheking.odin.features.impl.boss
 
+import com.mojang.blaze3d.platform.InputConstants
 import com.odtheking.odin.clickgui.settings.Setting.Companion.withDependency
 import com.odtheking.odin.clickgui.settings.impl.BooleanSetting
 import com.odtheking.odin.clickgui.settings.impl.KeybindSetting
 import com.odtheking.odin.clickgui.settings.impl.KeybindSetting.Companion.isDown
 import com.odtheking.odin.events.EntityInteractEvent
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Module
-import com.odtheking.odin.utils.addVec
-import com.odtheking.odin.utils.component1
-import com.odtheking.odin.utils.component2
-import com.odtheking.odin.utils.component3
+import com.odtheking.odin.utils.*
 import com.odtheking.odin.utils.handlers.TickTask
 import com.odtheking.odin.utils.render.drawText
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
@@ -20,14 +18,13 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
-import org.lwjgl.glfw.GLFW
 
 object ArrowAlign : Module(
     name = "Arrow Align",
     description = "Shows the solution for the Arrow Align device."
 ) {
     private val blockWrong by BooleanSetting("Block Wrong Clicks", true, desc = "Blocks wrong clicks, shift will override this.")
-    private val preventKey by KeybindSetting("Prevent Blocking", GLFW.GLFW_KEY_LEFT_SHIFT, desc = "While holding this key, wrong clicks won't be blocked, even if you aren't sneaking.").withDependency { blockWrong }
+    private val preventKey by KeybindSetting("Prevent Blocking", InputConstants.KEY_LSHIFT, desc = "While holding this key, wrong clicks won't be blocked, even if you aren't sneaking.").withDependency { blockWrong }
     private val invertKey by BooleanSetting("Invert Key", false, desc = "Inverts the behavior of the prevent key. Wrong clicks will be blocked while holding the prevent key, and allowed otherwise.").withDependency { blockWrong }
 
     private val recentClickTimestamps = mutableMapOf<Int, Long>()
@@ -83,7 +80,7 @@ object ArrowAlign : Module(
             if (calculateClicksNeeded(currentFrameRotations?.get(frameIndex) ?: return@on, targetSolution?.get(frameIndex) ?: return@on) == 0) clicksRemaining.remove(frameIndex)
         }
 
-        on<RenderEvent.Extract> {
+        on<RenderExtractEvent> {
             if (clicksRemaining.isEmpty() || DungeonUtils.getF7Phase() != M7Phases.P3) return@on
             clicksRemaining.forEach { (index, clickNeeded) ->
                 val colorCode = when {

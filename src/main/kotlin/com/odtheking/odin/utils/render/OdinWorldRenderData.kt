@@ -75,7 +75,7 @@ internal data class BeaconRenderData(
     val z: Int,
     val color: Int,
     val isScoping: Boolean,
-    val gameTime: Long,
+    val animationTime: Float,
 )
 
 internal data class TextRenderData(
@@ -112,7 +112,7 @@ internal data class TexturedQuadRenderData(
 internal val ODIN_WORLD_RENDER_DATA_KEY: RenderStateDataKey<OdinWorldRenderData> =
     RenderStateDataKey.create { "odin:world_render_data" }
 
-/** Mutable only while [com.odtheking.odin.events.RenderEvent.Extract] is being dispatched. */
+/** Mutable only while [com.odtheking.odin.events.RenderExtractEvent] is being dispatched. */
 class RenderConsumer {
     private val lines = ArrayList<LineRenderData>()
     private val filledBoxes = ArrayList<FilledBoxRenderData>()

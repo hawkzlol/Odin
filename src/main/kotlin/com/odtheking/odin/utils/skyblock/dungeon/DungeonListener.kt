@@ -13,7 +13,9 @@ import com.odtheking.odin.utils.noControlCodes
 import com.odtheking.odin.utils.romanToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.minecraft.network.protocol.game.*
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket
+import net.minecraft.network.protocol.game.ClientboundTabListPacket
 import net.minecraft.world.entity.EntityTypes
 import net.minecraft.world.entity.player.Player
 import kotlin.jvm.optionals.getOrNull
@@ -94,24 +96,29 @@ object DungeonListener {
                 dungeonStats.percentCleared = it
                 DungeonUtils.updateScore()
             }
+
+            dungeonStats.elapsedTime = timeRegex.find(text)?.groupValues?.get(1) ?: dungeonStats.elapsedTime
         }
 
         onReceive<ClientboundTabListPacket> {
+            if (!DungeonUtils.inDungeons) return@onReceive
             Blessing.entries.forEach { blessing ->
                 blessing.regex.find(footer.string)?.let { blessing.current = romanToInt(it.groupValues[1]) }
             }
         }
 
-        on<ChatMessageEvent> {
-            if (expectingBloodRegex.matches(value)) expectingBloodUpdate = true
-            doorOpenRegex.find(value)?.let { dungeonStats.doorOpener = it.groupValues[1] }
-            deathRegex.find(value)?.let { match ->
+        on<MessageEvent.Chat> {
+            if (!DungeonUtils.inDungeons) return@on
+            if (expectingBloodRegex.matches(message)) expectingBloodUpdate = true
+            doorOpenRegex.find(message)?.let { dungeonStats.doorOpener = it.groupValues[1] }
+            deathRegex.find(message)?.let { match ->
                 dungeonTeammates.find { teammate ->
                     teammate.name == (match.groupValues[1].takeUnless { it == "You" } ?: mc.player?.name?.string)
                 }?.deaths?.inc()
             }
 
-            when (partyMessageRegex.find(value)?.groupValues?.get(1)?.lowercase() ?: return@on) {
+            val partyMatch = partyMessageRegex.find(message) ?: return@on
+            when (partyMatch.groupValues[2].lowercase()) {
                 "mimic killed", "mimic slain", "mimic killed!", "mimic dead", "mimic dead!", ->
                     if (DungeonUtils.isFloor(6, 7)) dungeonStats.mimicKilled = true
 
@@ -119,7 +126,7 @@ object DungeonListener {
                     dungeonStats.princeKilled = true
 
                 "bat killed", "bat slain", "bat killed!", "bat dead", "bat dead!" ->
-                    dungeonStats.batKilled = true
+                    dungeonStats.batKillers.add(partyMatch.groupValues[1])
 
                 "blaze done!", "blaze done", "blaze puzzle solved!" ->
                     puzzles.find { it == Puzzle.BLAZE }.let { it?.status = PuzzleStatus.Completed }
@@ -129,17 +136,16 @@ object DungeonListener {
             DungeonUtils.updateScore()
         }
 
-        onReceive<ClientboundRemoveEntitiesPacket> {
+        on<EntityEvent.Remove> {
             DungeonUtils.dungeonTeammates.forEach {
                 val id = it.entity?.id ?: return@forEach
-                if (entityIds.contains(id)) it.entity = null
+                if (entity.id == id) it.entity = null
             }
         }
 
-        onReceive<ClientboundAddEntityPacket> {
-            if (type == EntityTypes.PLAYER)
-                DungeonUtils.dungeonTeammates.find { it.entity == null && it.name == mc.level?.getEntity(id)?.name?.string }?.entity =
-                    mc.level?.getEntity(id) as? Player
+        on<EntityEvent.Add> {
+            if (entity.type == EntityTypes.PLAYER && entity.uuid.version() != 4 && DungeonUtils.inDungeons)
+                DungeonUtils.dungeonTeammates.find { it.entity == null && it.name == entity.name.string }?.entity = entity as? Player
         }
     }
 
@@ -180,11 +186,11 @@ object DungeonListener {
 
         leapTeammates =
             when (LeapMenu.type) {
-                0 -> odinSorting(dungeonTeammatesNoSelf.sortedBy { it.clazz.priority }).toList()
-                1 -> dungeonTeammatesNoSelf.sortedWith(compareBy({ it.clazz.ordinal }, { it.name }))
-                2 -> dungeonTeammatesNoSelf.sortedBy { it.name }
-                3 -> dungeonTeammatesNoSelf.sortedBy { DungeonUtils.customLeapOrder.indexOf(it.name.lowercase()).takeIf { index -> index != -1 } ?: Int.MAX_VALUE }
-                else -> dungeonTeammatesNoSelf
+                LeapMenu.Sorting.ODIN -> odinSorting(dungeonTeammatesNoSelf.sortedBy { it.clazz.priority }).toList()
+                LeapMenu.Sorting.CLASS -> dungeonTeammatesNoSelf.sortedWith(compareBy({ it.clazz.ordinal }, { it.name }))
+                LeapMenu.Sorting.NAME -> dungeonTeammatesNoSelf.sortedBy { it.name }
+                LeapMenu.Sorting.CUSTOM -> dungeonTeammatesNoSelf.sortedBy { DungeonUtils.customLeapOrder.indexOf(it.name.lowercase()).takeIf { index -> index != -1 } ?: Int.MAX_VALUE }
+                LeapMenu.Sorting.NONE -> dungeonTeammatesNoSelf
             }
     }
 
@@ -199,7 +205,7 @@ object DungeonListener {
     private val secretCountRegex = Regex("^ Secrets Found: (\\d+)$")
     private val openedRoomsRegex = Regex("^ Opened Rooms: (\\d+)$")
     private val floorRegex = Regex("The Catacombs \\((\\w+)\\)$")
-    private val partyMessageRegex = Regex("^Party > .*?: (.+)$")
+    private val partyMessageRegex = Regex("^Party > (?:\\[[^]]+] )*(\\w{1,16}): (.+)$")
     private val puzzleCountRegex = Regex("^Puzzles: \\((\\d+)\\)$")
     private val deathsRegex = Regex("^Team Deaths: (\\d+)$")
     private val cryptRegex = Regex("^ Crypts: (\\d+)$")
@@ -216,11 +222,13 @@ object DungeonListener {
         var elapsedTime: String = "0s",
         private var _mimicKilled: Boolean = false,
         var princeKilled: Boolean = false,
-        var batKilled: Boolean = false,
+        val batKillers: MutableSet<String> = mutableSetOf(),
         var doorOpener: String = "Unknown",
         var bloodDone: Boolean = false,
         var puzzleCount: Int = 0,
     ) {
+        val batKilled: Int get() = batKillers.size
+
         var mimicKilled: Boolean
             get() = _mimicKilled
             set(value) {

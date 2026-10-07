@@ -2,19 +2,18 @@ package com.odtheking.odin.features.impl.dungeon.puzzlesolvers
 
 import com.odtheking.odin.OdinMod.mc
 import com.odtheking.odin.events.BlockUpdateEvent
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.RoomEnterEvent
 import com.odtheking.odin.features.impl.dungeon.map.tile.DungeonRoom
 import com.odtheking.odin.features.impl.dungeon.puzzlesolvers.PuzzleSolvers.onPuzzleComplete
-import com.odtheking.odin.utils.Color
+import com.odtheking.odin.utils.*
 import com.odtheking.odin.utils.Color.Companion.withAlpha
-import com.odtheking.odin.utils.Colors
-import com.odtheking.odin.utils.JsonResourceLoader
-import com.odtheking.odin.utils.equalsOneOf
+import com.odtheking.odin.utils.render.BoxStyle
 import com.odtheking.odin.utils.render.drawLine
 import com.odtheking.odin.utils.render.drawStyledBox
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.Identifier
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -22,9 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object BeamsSolver {
     private var scanned = false
-    private var lanternPairs: List<List<Int>> = JsonResourceLoader.loadJson(
-        "/assets/odin/puzzles/creeperBeamsSolutions.json", emptyList()
-    )
+    private var lanternPairs: List<List<Int>> = JsonResourceLoader.loadJson(Identifier.fromNamespaceAndPath("odin", "puzzles/creeper-beams-solutions.json")) ?: emptyList()
 
     private var currentLanternPairs = ConcurrentHashMap<BlockPos, Pair<BlockPos, Color>>()
 
@@ -43,7 +40,7 @@ object BeamsSolver {
         }
     }
 
-    fun onRenderWorld(event: RenderEvent.Extract, beamStyle: Int, beamsTracer: Boolean, beamsAlpha: Float) {
+    fun onRenderWorld(event: RenderExtractEvent, beamStyle: BoxStyle, beamsTracer: Boolean, beamsAlpha: Float) {
         if (DungeonUtils.currentRoomName != "Creeper Beams" || currentLanternPairs.isEmpty()) return
 
         currentLanternPairs.entries.forEach { positions ->

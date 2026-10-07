@@ -1,7 +1,7 @@
 package com.odtheking.odin.features.impl.dungeon.puzzlesolvers
 
 import com.odtheking.odin.OdinMod.mc
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.UseItemOnPostEvent
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.JsonResourceLoader
@@ -12,16 +12,14 @@ import com.odtheking.odin.utils.render.drawTracer
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import com.odtheking.odin.utils.toFixed
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 
 object WaterSolver {
 
-    private var waterSolutions: Map<String, Map<String, Map<String, Map<String, List<Double>>>>> = JsonResourceLoader.loadJson(
-        "/assets/odin/puzzles/waterSolutions.json", emptyMap()
-    )
-
+    private var waterSolutions: Map<String, Map<String, Map<String, Map<String, List<Double>>>>> = JsonResourceLoader.loadJson(Identifier.fromNamespaceAndPath("odin", "puzzles/water-solutions.json")) ?: emptyMap()
     private var solutions = HashMap<LeverBlock, Array<Double>>()
     private var patternIdentifier = -1
     private var openedWaterTicks = -1
@@ -58,7 +56,7 @@ object WaterSolver {
         }
     }
 
-    fun onRenderWorld(event: RenderEvent.Extract, showTracer: Boolean, tracerColorFirst: Color, tracerColorSecond: Color) {
+    fun onRenderWorld(event: RenderExtractEvent, showTracer: Boolean, tracerColorFirst: Color, tracerColorSecond: Color) {
         if (patternIdentifier == -1 || solutions.isEmpty() || DungeonUtils.currentRoomName != "Water Board") return
 
         val solutionList = solutions

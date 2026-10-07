@@ -22,9 +22,7 @@ object LocationUtils {
     var currentArea: Island = Island.Unknown
         private set(value) {
             field = value
-            if (value !== Island.Unknown) {
-                LocationChangeEvent.postAndCatch()
-            }
+            if (value !== Island.Unknown) LocationChangeEvent.postAndCatch()
         }
 
     var lobbyId: String? = null
@@ -51,13 +49,12 @@ object LocationUtils {
         }
 
         on<LevelEvent.Load> {
-            currentArea = if (mc.singleplayerServer?.isPublished == false) Island.SinglePlayer else Island.Unknown
+            currentArea = if (mc.hasSingleplayerServer()) Island.SinglePlayer else Island.Unknown
             isInSkyblock = false
             lobbyId = null
         }
     }
 
     fun isCurrentArea(vararg areas: Island): Boolean =
-        if (currentArea == Island.SinglePlayer) true
-        else areas.any { currentArea == it }
+        currentArea == Island.SinglePlayer || areas.any { currentArea == it }
 }

@@ -14,17 +14,16 @@ import com.odtheking.odin.utils.skyblock.PartyUtils
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 
 val mainCommand = Commodore("odin", "od") {
-    runs {
-        mc.schedule { mc.gui.setScreen(ClickGUI) }
-    }
-
-    literal("edithud").runs {
-        mc.schedule { mc.gui.setScreen(HudManager) }
-    }
-
     literal("forcedungeons").runs {
         DungeonUtils.forceDungeons = !DungeonUtils.forceDungeons
         modMessage("Force dungeons " + (if (DungeonUtils.forceDungeons) "enabled" else "disabled") + ".")
+    }
+    runs {
+        mc.schedule { mc.setScreenAndShow(ClickGUI) }
+    }
+
+    literal("edithud").runs {
+        mc.schedule { mc.setScreenAndShow(HudManager) }
     }
 
     literal("tps").runs {
@@ -80,10 +79,23 @@ val mainCommand = Commodore("odin", "od") {
         }
     }
 
+    literal("toggle") {
+        literal("module").executable {
+            param("moduleName") {
+                suggests { ModuleManager.modules.keys.map { it.replace(" ", "_") } }
+            }
+
+            runs { moduleName: String ->
+                val module = ModuleManager.modules[moduleName.replace("_", " ")] ?: throw SyntaxException("Module not found.")
+                module.toggle()
+                modMessage("§aModule §f${module.name} §ahas been ${if (module.enabled) "enabled" else "disabled"}.")
+            }
+        }
+    }
+
     literal("reset") {
         literal("module").executable {
             param("moduleName") {
-                // keys for modules are already lowercase
                 suggests { ModuleManager.modules.keys.map { it.replace(" ", "_") } }
             }
 

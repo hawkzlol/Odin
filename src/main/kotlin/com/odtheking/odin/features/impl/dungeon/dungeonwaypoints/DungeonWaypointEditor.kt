@@ -1,18 +1,17 @@
 package com.odtheking.odin.features.impl.dungeon.dungeonwaypoints
 
+import com.mojang.blaze3d.platform.InputConstants
 import com.odtheking.odin.OdinMod
 import com.odtheking.odin.OdinMod.mc
 import com.odtheking.odin.events.InputEvent
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.features.impl.dungeon.dungeonwaypoints.DungeonWaypoints.DungeonWaypoint
 import com.odtheking.odin.features.impl.dungeon.dungeonwaypoints.DungeonWaypoints.WaypointType
 import com.odtheking.odin.features.impl.dungeon.map.tile.DungeonRoom
 import com.odtheking.odin.features.impl.render.Etherwarp
+import com.odtheking.odin.utils.*
 import com.odtheking.odin.utils.Color.Companion.withAlpha
-import com.odtheking.odin.utils.devMessage
-import com.odtheking.odin.utils.getBlockBounds
-import com.odtheking.odin.utils.isEtherwarpItem
-import com.odtheking.odin.utils.modMessage
+import com.odtheking.odin.utils.render.BoxStyle
 import com.odtheking.odin.utils.render.drawBoxes
 import com.odtheking.odin.utils.render.drawStyledBox
 import com.odtheking.odin.utils.render.drawText
@@ -22,28 +21,26 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
-import net.minecraft.world.phys.Vec3
-import org.lwjgl.glfw.GLFW
 
-internal fun DungeonWaypoints.renderWaypoints(event: RenderEvent.Extract) {
+fun DungeonWaypoints.renderWaypoints(event: RenderExtractEvent) {
     if (!DungeonUtils.inClear) return
     val room = DungeonUtils.currentRoom ?: return
     event.drawBoxes(room.waypoints, disableDepth)
     room.waypoints.forEach { waypoint ->
         if (waypoint.isClicked || waypoint.title == null) return@forEach
         event.drawText(
-            waypoint.title, Vec3.atCenterOf(waypoint.blockPos).add(0.0, 0.1 * titleScale, 0.0),
+            waypoint.title, waypoint.blockPos.center.add(0.0, 0.1 * titleScale, 0.0),
             titleScale, waypoint.depth
         )
     }
 
     reachPosition?.takeIf { allowEdits }?.let { pos ->
-        event.drawStyledBox(relativeAabbAt(pos).move(pos), color.withAlpha(0.3f), style = if (filled) 0 else 1, depthCheck)
+        event.drawStyledBox(relativeAabbAt(pos).move(pos), color.withAlpha(0.3f), style = if (filled) BoxStyle.FILLED else BoxStyle.OUTLINE, depthCheck)
     }
 }
 
-internal fun DungeonWaypoints.handleEditorInput(event: InputEvent) {
-    if (event.key.value != GLFW.GLFW_MOUSE_BUTTON_RIGHT || mc.gui.screen() != null) return
+fun DungeonWaypoints.handleEditorInput(event: InputEvent) {
+    if (event.key.value != InputConstants.MOUSE_BUTTON_RIGHT || mc.gui.screen() != null) return
     cacheEtherwarpTarget()
     if (!allowEdits) return
     val room = DungeonUtils.currentRoom ?: return
@@ -57,7 +54,7 @@ internal fun DungeonWaypoints.handleEditorInput(event: InputEvent) {
         return
     }
     if (allowTextEdit && mc.player?.isCrouching == true) {
-        openWaypointTitlePrompt(room, blockPos, relativeAabbAt(pos), editableWaypoints)
+        openWaypointTitlePrompt(room, blockPos, room.getRelativeAABB(relativeAabbAt(pos)), editableWaypoints)
         return
     }
     if (editableWaypoints.removeIf { it.blockPos == blockPos }) {
@@ -66,13 +63,13 @@ internal fun DungeonWaypoints.handleEditorInput(event: InputEvent) {
         OdinMod.scope.launch { saveWaypoints() }
         return
     }
-    editableWaypoints.add(createWaypoint(blockPos, relativeAabbAt(pos)))
+    editableWaypoints.add(createWaypoint(blockPos, room.getRelativeAABB(relativeAabbAt(pos))))
     devMessage("Added waypoint at $blockPos")
     syncRoomToActive(room)
     OdinMod.scope.launch { saveWaypoints() }
 }
 
-internal val reachPosition: BlockPos?
+val reachPosition: BlockPos?
     get() {
         val hitResult = mc.hitResult
         return when {
@@ -99,7 +96,7 @@ private fun DungeonWaypoints.openWaypointTitlePrompt(
     aabb: AABB,
     editableWaypoints: MutableList<DungeonWaypoint>,
 ) {
-    mc.gui.setScreen(TextPromptScreen("Waypoint Name").setCallback { text ->
+    mc.setScreenAndShow(TextPromptScreen("Waypoint Name").setCallback { text ->
         editableWaypoints.removeIf { it.blockPos == blockPos }
         editableWaypoints.add(createWaypoint(blockPos, aabb, text))
         devMessage("Added waypoint with $text at $blockPos")
@@ -116,9 +113,9 @@ private fun DungeonWaypoints.createWaypoint(blockPos: BlockPos, aabb: AABB, titl
     depth = depthCheck,
     aabb = aabb,
     title = title,
-    type = WaypointType.getByInt(waypointType),
+    type = waypointType.takeIf { it != WaypointType.NONE },
 )
 
-internal fun DungeonWaypoints.relativeAabbAt(pos: BlockPos): AABB =
+fun DungeonWaypoints.relativeAabbAt(pos: BlockPos): AABB =
     if (!useBlockSize) AABB(BlockPos.ZERO).inflate((sizeX - 1.0) / 2.0, (sizeY - 1.0) / 2.0, (sizeZ - 1.0) / 2.0)
     else pos.getBlockBounds() ?: AABB(BlockPos.ZERO)

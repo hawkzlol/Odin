@@ -1,30 +1,30 @@
 package com.odtheking.odin.features.impl.render
 
 import com.google.gson.annotations.SerializedName
+import com.mojang.blaze3d.platform.InputConstants
 import com.odtheking.odin.OdinMod
 import com.odtheking.odin.clickgui.ClickGUI
 import com.odtheking.odin.clickgui.HudManager
 import com.odtheking.odin.clickgui.settings.AlwaysActive
 import com.odtheking.odin.clickgui.settings.impl.*
-import com.odtheking.odin.events.ChatMessageEvent
+import com.odtheking.odin.events.LevelEvent
+import com.odtheking.odin.events.FloorEnterEvent
+import com.odtheking.odin.events.MessageEvent
+import com.odtheking.odin.events.RoomEnterEvent
+import com.odtheking.odin.events.SecretsUpdateEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Category
 import com.odtheking.odin.features.Module
 import com.odtheking.odin.features.ModuleManager
-import com.odtheking.odin.utils.Color
-import com.odtheking.odin.utils.alert
-import com.odtheking.odin.utils.getChatBreak
-import com.odtheking.odin.utils.isPortReleaseNewer
-import com.odtheking.odin.utils.modMessage
-import com.odtheking.odin.utils.PORT_RELEASE_API
-import com.odtheking.odin.utils.PORT_RELEASE_PAGE
+import com.odtheking.odin.features.impl.dungeon.map.DungeonMap
+import com.odtheking.odin.utils.*
 import com.odtheking.odin.utils.network.WebUtils.fetchJson
+import com.odtheking.odin.utils.skyblock.LocationUtils
 import com.odtheking.odin.utils.ui.rendering.NVGRenderer
 import kotlinx.coroutines.launch
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
-import org.lwjgl.glfw.GLFW
 import java.net.URI
 import kotlin.math.max
 import kotlin.math.round
@@ -37,18 +37,33 @@ internal fun isProfileIdMessage(message: String): Boolean = PROFILE_ID_MESSAGE_R
 object ClickGUIModule : Module(
     name = "Click GUI",
     description = "Allows you to customize the UI.",
-    key = GLFW.GLFW_KEY_RIGHT_SHIFT
+    key = InputConstants.KEY_RSHIFT
 ) {
     val enableNotification by BooleanSetting("Chat notifications", true, desc = "Sends a message when you toggle a module with a keybind")
     val clickGUIColor by ColorSetting("Color", Color(50, 150, 220), desc = "The color of the Click GUI.")
-
-    val roundedPanelBottom by BooleanSetting("Rounded Panel Bottoms", true, desc = "Whether to extend panels to make them rounded at the bottom.")
+    private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.gui.setScreen(HudManager) }
 
     val hypixelApiUrl by StringSetting("API URL", "https://api.odtheking.com/hypixel/", 128, "The Hypixel API server to connect to.").hide()
     val webSocketUrl by StringSetting("Socket URL", "wss://ws.odtheking.com/", 128, "The Websocket server to connect to.").hide()
 
-    private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.gui.setScreen(HudManager) }
+    init {
+        on<SecretsUpdateEvent> { DungeonMap.sendSync(room) }
+
+        on<FloorEnterEvent> {
+            LocationUtils.lobbyId?.let { DungeonMap.syncSocket.connect("${webSocketUrl}$it") } ?: devMessage("Failed to connect to dungeon websocket, lobbyId is null.")
+        }
+
+        on<RoomEnterEvent> {
+            if (room == null) DungeonMap.syncSocket.shutdown()
+            else DungeonMap.sendSync(room)
+        }
+    }
+
     val devMessage by BooleanSetting("Developer Message", false, desc = "Sends development related messages to the chat.")
+    init {
+        on<LevelEvent.Load> { DungeonMap.syncSocket.shutdown() }
+    }
+
     val dungeonCoresLogging by BooleanSetting("Core loggings", false, desc = "")
 
     private var firstJoin by BooleanSetting("First join", true, "").hide()
@@ -83,8 +98,8 @@ object ClickGUIModule : Module(
             latestVersionNumber = checkNewerVersion(OdinMod.version.toString())
         }
 
-        on<ChatMessageEvent> {
-            if (!isProfileIdMessage(value)) return@on
+        on<MessageEvent.Chat> {
+            if (!isProfileIdMessage(message)) return@on
 
             if (firstJoin) {
                 firstJoin = false
@@ -116,7 +131,7 @@ object ClickGUIModule : Module(
 
             modMessage(
                 Component.literal(getChatBreak())
-                    .append(Component.literal("§3Odin 26.2 port update available: §f$latestVersionNumber\n\n"))
+                    .append(Component.literal("\n§3Odin 26.2 port update available: §f$latestVersionNumber\n\n"))
                     .append(
                         Component.literal("§bGitHub release").withStyle {
                             it.withClickEvent(ClickEvent.OpenUrl(URI(PORT_RELEASE_PAGE)))

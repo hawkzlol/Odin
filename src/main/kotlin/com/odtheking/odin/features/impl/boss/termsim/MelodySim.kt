@@ -5,18 +5,19 @@ import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalUtils
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.inventory.Slot
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
 object MelodySim : TermSimGUI(
     TerminalTypes.MELODY.termName, TerminalTypes.MELODY.windowSize
 ) {
-    private val magentaPane get() = ItemStack(Items.STAINED_GLASS_PANE.magenta()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
-    private val greenPane   get() = ItemStack(Items.STAINED_GLASS_PANE.lime()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
-    private val redPane     get() = ItemStack(Items.STAINED_GLASS_PANE.red()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
-    private val whitePane   get() = ItemStack(Items.STAINED_GLASS_PANE.white()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
-    private val redClay     get() = ItemStack(Items.DYED_TERRACOTTA.red()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
-    private val greenClay   get() = ItemStack(Items.DYED_TERRACOTTA.lime()).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val magentaPane get() = ItemStack(Items.STAINED_GLASS_PANE.pick(DyeColor.MAGENTA)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val greenPane   get() = ItemStack(Items.STAINED_GLASS_PANE.pick(DyeColor.LIME)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val redPane     get() = ItemStack(Items.STAINED_GLASS_PANE.pick(DyeColor.RED)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val whitePane   get() = ItemStack(Items.STAINED_GLASS_PANE.pick(DyeColor.WHITE)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val redClay     get() = ItemStack(Items.DYED_TERRACOTTA.pick(DyeColor.RED)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
+    private val greenClay   get() = ItemStack(Items.DYED_TERRACOTTA.pick(DyeColor.LIME)).apply { set(DataComponents.CUSTOM_NAME, Component.literal("")) }
 
     private var magentaColumn = 1
     private var limeColumn = 2
@@ -49,9 +50,9 @@ object MelodySim : TermSimGUI(
         currentRow++
         updateRow(0)
         updateRow(oldRow)
-        if (currentRow <= 4) updateRow(currentRow)
+        if (currentRow <= 3) updateRow(currentRow)
 
-        if (currentRow >= 5) TerminalUtils.lastTermOpened?.onComplete()
+        if (currentRow > 3) TerminalUtils.lastTermOpened?.onComplete()
         super.slotClick(slot, button)
     }
 
@@ -60,13 +61,15 @@ object MelodySim : TermSimGUI(
     }
 
     private fun Slot.generateItemStack(): ItemStack {
-        return when {
-            index % 9 == magentaColumn && index / 9 !in 1..4 -> magentaPane
-            index % 9 == limeColumn && index / 9 == currentRow -> greenPane
-            index % 9 in 1..5 && index / 9 == currentRow -> redPane
-            index % 9 == 7 && index / 9 == currentRow -> greenClay
-            index % 9 == 7 && index / 9 in 1..4 -> redClay
-            index % 9 in 1..5 && index / 9 in 1..4 -> whitePane
+        val row = index / 9
+        val col = index % 9
+        return when (col) {
+            magentaColumn if (row == 0 || row == 4) -> magentaPane
+            limeColumn if row == currentRow -> greenPane
+            in 1..5 if row == currentRow -> redPane
+            7 if row == currentRow -> greenClay
+            7 if row in 1..3 -> redClay
+            in 1..5 if row in 1..3 -> whitePane
             else -> blackPane
         }
     }

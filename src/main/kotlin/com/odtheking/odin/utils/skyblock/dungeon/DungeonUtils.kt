@@ -2,7 +2,6 @@ package com.odtheking.odin.utils.skyblock.dungeon
 
 import com.odtheking.odin.OdinMod.mc
 import com.odtheking.odin.events.ScoreUpdateEvent
-import com.odtheking.odin.features.impl.dungeon.MapInfo.togglePaul
 import com.odtheking.odin.features.impl.dungeon.map.WorldScan
 import com.odtheking.odin.features.impl.dungeon.map.tile.DungeonRoom
 import com.odtheking.odin.utils.equalsOneOf
@@ -23,18 +22,19 @@ internal fun calculateDungeonBonusScore(
     cryptCount: Int,
     mimicKilled: Boolean,
     princeKilled: Boolean,
-    batKilled: Boolean,
+    batKilled: Int,
     paulBonus: Boolean,
 ): Int = cryptCount.coerceAtMost(5) +
     (if (mimicKilled) 2 else 0) +
     (if (princeKilled) 1 else 0) +
-    (if (batKilled) 1 else 0) +
+    batKilled +
     (if (paulBonus) 10 else 0)
 
 object DungeonUtils {
 
     /** Runtime override for servers that emulate Hypixel dungeons. */
     var forceDungeons: Boolean = false
+
 
     inline val inDungeons: Boolean
         get() = forceDungeons || LocationUtils.isCurrentArea(Island.Dungeon)
@@ -112,7 +112,7 @@ object DungeonUtils {
     inline val princeKilled: Boolean
         get() = DungeonListener.dungeonStats.princeKilled
 
-    inline val batKilled: Boolean
+    inline val batKilled: Int
         get() = DungeonListener.dungeonStats.batKilled
 
     inline val currentRoom: DungeonRoom?
@@ -122,13 +122,7 @@ object DungeonUtils {
         get() = DungeonListener.paul
 
     inline val getBonusScore: Int
-        get() = calculateDungeonBonusScore(
-            cryptCount = cryptCount,
-            mimicKilled = mimicKilled,
-            princeKilled = princeKilled,
-            batKilled = batKilled,
-            paulBonus = (isPaul && togglePaul == 0) || togglePaul == 2,
-        )
+        get() = calculateDungeonBonusScore(cryptCount, mimicKilled, princeKilled, batKilled, isPaul)
 
     inline val bloodDone: Boolean
         get() = DungeonListener.dungeonStats.bloodDone
@@ -244,24 +238,12 @@ object DungeonUtils {
     private const val WITHER_ESSENCE_ID = "2865274b-3097-394e-8149-ec629c72d850"
     private const val REDSTONE_KEY = "fed95410-aba1-39df-9b95-1d4f361eb66e"
 
-    /**
-     * Determines whether a given block state and position represent a secret location.
-     *
-     * This function checks if the specified block state and position correspond to a secret location based on certain criteria.
-     * It considers blocks such as chests, trapped chests, and levers as well as player skulls with a specific player profile ID.
-     *
-     * @param state The block state to be evaluated for secrecy.
-     * @param pos The position (BlockPos) of the block in the world.
-     * @return `true` if the specified block state and position indicate a secret location, otherwise `false`.
-     */
-    fun isSecret(state: BlockState, pos: BlockPos): Boolean {
-        return when {
-            state.block.equalsOneOf(Blocks.CHEST, Blocks.TRAPPED_CHEST, Blocks.LEVER) -> true
-            state.block is SkullBlock ->
-                (mc.level?.getBlockEntity(pos) as? SkullBlockEntity)?.ownerProfile?.partialProfile()?.id
-                    ?.toString()?.equalsOneOf(WITHER_ESSENCE_ID, REDSTONE_KEY) ?: false
+    fun isSecret(state: BlockState, pos: BlockPos): Boolean = when {
+        state.block.equalsOneOf(Blocks.CHEST, Blocks.TRAPPED_CHEST, Blocks.LEVER) -> true
+        state.block is SkullBlock ->
+            (mc.level?.getBlockEntity(pos) as? SkullBlockEntity)?.ownerProfile?.partialProfile()?.id
+                ?.toString()?.equalsOneOf(WITHER_ESSENCE_ID, REDSTONE_KEY) ?: false
 
-            else -> false
-        }
+        else -> false
     }
 }

@@ -188,3 +188,90 @@ Clean Java 25 test/build validation passes 16 suites / 51 tests. The candidate a
 Minecraft `~26.2` and Java 25, and contains both new verified menu/screen lifecycle Mixins. No DNA
 source or artifact is present. This refresh did not launch Minecraft, so live 0.3.2 feature behavior
 is not claimed as runtime-tested.
+
+## Official 0.3.3 synchronization (2026-09-18)
+
+Target: official tag `0.3.3`, `8f34a5f5b062debf71193267be66ed70e925f388`. This is the latest published release
+verified on this date. The entire 18-commit delta from official 0.3.2 is ported (106 changed paths
+with rename detection). Upstream main `38ddc1b5dacd01259b2ec4f5738ada925ba880af` has eight additional commits and
+an unreleased 0.3.4 version bump; those development changes are not part of this release port.
+
+Included behavior: Quiver Display, Kuudra Tracker, full-room map socket synchronization,
+rotated waypoint bounds and waypoint render priority, revised Rubix/terminal prediction and click
+events, chat/action-bar modification events, entity lifecycle/equipment/data/movement events,
+Invincibility Timer fixes, Vesuvius slot handling, coop Chat Commands, scoreboard dungeon elapsed
+time, Boss Entry split placement, Simon Says block checking, puzzle resource renames, and all
+other changes in the release delta.
+
+Compatibility resolutions preserve the 26.2 extraction/submission renderer, immutable frame data,
+managed GUI/font lifecycle, `mc.gui` screen ownership, entity registry and colored-item families,
+non-null menu slot events, and Java 25. New Entity/LivingEntity/SynchedEntityData injection targets
+were inspected against the 26.2 target source; compilation does not substitute for live Mixin testing.
+The old ChatListener mixin is removed in favor of Fabric's message modification events.
+
+The saved ColorSetting hex-editor regression is corrected by synchronizing its text when loading
+a saved color. RGB/RGBA load regression checks and asymmetric AABB rotation/round-trip checks pass.
+
+Source audit:
+- 71/71 module declarations and paths match official 0.3.3.
+- 630/630 setting and HUD declaration lines match after the required screen-owner substitution.
+- 27/27 world-render subscribers; waypoint HIGHEST priority reaches the existing ordered queues.
+- All shared assets match, including the five renamed puzzle JSON resources.
+- Remaining differences are the existing 26.2 renderer/API adaptations, equivalent tested helpers,
+  public identity/update routing, privacy safeguards, and the local force-dungeon command.
+- No obsolete chat/GUI/tick event subscribers, conflict markers, raw graphics backends or trailing
+  whitespace were found in the final production sources.
+
+Validation: root clean test/build passed 49 tests; public clean test/build passed 55 tests.
+The final root rebuild after whitespace cleanup passed. Artifact metadata declares Minecraft
+`~26.2` and Java 25; all declared Mixin classes and new feature/event classes are present.
+Binary and source JAR checks found no private add-on, instance data, or diagnostic harness entries.
+Startup username telemetry remains absent. The removed upstream adddev command also removes its
+former password-bearing chat path. No push, release, deployment, or client launch was performed.
+
+Public candidate: `Odin-0.3.3+mc26.2.port.1.jar`, 4,238,459 bytes.
+SHA-256: `D0054EE2FF536DAB8792D7A9E00D4ECCE7E509D618B4A3DCE97EFDCA29BE0427`.
+
+Known boundaries: `/od forcedungeons` is retained unchanged and still masks boss state while enabled;
+it is not claimed to match official boss behavior. Packet-driven tick cadence remains server-dependent.
+Live terminal, socket, HUD, rendering and Hypixel behavior were not exercised. Earlier renderer smoke
+results are historical evidence, not runtime verification of this 0.3.3 build.
+
+## Authorized hidden runtime checks (2026-09-18)
+
+The exact public 0.3.3+mc26.2.port.1 JAR passed isolated, muted, hidden-window smoke runs
+on OpenGL 3.3.0 and forced Vulkan 1.4.341 (NVIDIA 610.88). Each run reached the title screen,
+rendered ClickGUI and expanded Invincibility Timer settings, completed a real resource reload,
+joined a copied local test world, rendered the existing RenderTest world geometry, and rendered
+Dungeon Map, Quiver Display and Kuudra Tracker HUD previews. Internal screenshots were inspected;
+fonts, panels and HUD previews rendered successfully. Both runs emitted the completion marker
+and stopped their integrated servers; their processes exited. No Odin/Mixin application failure
+was observed through those paths.
+
+A separate local helper suppressed the GLFW show-window call; visibility was checked at each
+capture. The helper was not added to production sources or either deliverable JAR. Root and
+public artifact SHA-256 hashes are unchanged. Normal launcher instances and original worlds
+were not altered. No multiplayer server was joined.
+
+An initial helper-only Mixin package error was corrected before the successful runs. The first
+successful attempt used OpenGL after Minecraft reset its Vulkan preference following that error;
+only the later explicitly forced run counts as Vulkan evidence. Expected offline authentication,
+Windows performance-counter and stale third-party Vulkan-layer diagnostics were distinguished
+from Odin failures. An invalid test simulation-distance option fell back to its default on OpenGL;
+the forced Vulkan run used a valid value.
+
+This establishes startup, loaded Mixin, GUI, resource-reload and representative local rendering
+health. It does not establish live Hypixel terminal prediction, boss timing, socket synchronization,
+Kuudra purchases, private add-on runtime behavior or arbitrary modpack compatibility. The existing
+force-dungeon boss-state limitation remains.
+
+
+## 0.3.6 refresh with retained ClickGUI (2026-10-07)
+
+Official main and tag 0.3.6 both resolve to `833e0533ef9c47529b790612627a65618ebd5a58`.
+The full gameplay delta is integrated; the existing ClickGUI, controls and HUD editor remain.
+All 71 upstream module declarations are present and 55 protected UI source/assets in each
+source tree match the pre-update snapshot exactly. New standalone waypoint screens have
+isolated Compose support; enum/range adapters expose new settings through the old controls.
+Core/public builds pass 54/60 tests. No 0.3.6 game launch or deployment was performed.
+See `FULL_SYNC_AUDIT_0_3_6.md` for scope, compatibility details and verification limits.

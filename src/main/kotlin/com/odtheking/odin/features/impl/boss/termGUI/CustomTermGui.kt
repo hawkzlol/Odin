@@ -1,21 +1,19 @@
 package com.odtheking.odin.features.impl.boss.termGUI
 
+import com.mojang.blaze3d.platform.InputConstants
 import com.odtheking.odin.OdinMod.mc
-import com.odtheking.odin.events.GuiEvent
 import com.odtheking.odin.events.ScreenEvent
 import com.odtheking.odin.features.impl.boss.TerminalSolver
-import com.odtheking.odin.features.impl.boss.TerminalSolver.hideClicked
 import com.odtheking.odin.features.impl.boss.TerminalSolver.renderDebug
 import com.odtheking.odin.utils.Color
-import com.odtheking.odin.utils.Colors
-import com.odtheking.odin.utils.render.roundedFill
+import com.odtheking.odin.utils.render.roundedRect
 import com.odtheking.odin.utils.render.text
+import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalTypes
 import com.odtheking.odin.utils.skyblock.dungeon.terminals.TerminalUtils
 import com.odtheking.odin.utils.ui.widget.CustomGUIImpl
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.input.KeyEvent
-import org.lwjgl.glfw.GLFW
 
 // Not really pixel perfect but good enough
 abstract class TermGui {
@@ -52,13 +50,13 @@ abstract class TermGui {
                 grid?.let { g ->
                     val (bx, by) = g.toBase(click.x(), click.y(), guiScale)
                     hoveredSlotIndex = g.slots.firstOrNull { it.containsBase(bx, by) }?.slotIndex
-                    hoveredSlotIndex?.let { customTerminalClick(it, click.button()) }
+                    hoveredSlotIndex?.let {  TerminalUtils.currentTerm?.click(it, click.button(), TerminalSolver.clickPrediction) }
                 }; return true
             },
             key = fun ScreenEvent.KeyPress.(): Any {
                 if (!isTerminalOverrideKey(input)) return false
                 hoveredSlotIndex?.let {
-                    customTerminalClick(it, if (!input.hasControlDown()) GLFW.GLFW_MOUSE_BUTTON_1 else GLFW.GLFW_MOUSE_BUTTON_2)
+                    TerminalUtils.currentTerm?.click(it, if (!input.hasControlDown()) InputConstants.MOUSE_BUTTON_LEFT else InputConstants.MOUSE_BUTTON_RIGHT, TerminalSolver.clickPrediction)
                 }; return true
             })
         )
@@ -66,9 +64,8 @@ abstract class TermGui {
 
     private fun currentTermScreen() = mc.gui.screen() as? AbstractContainerScreen<*>
 
-    private fun isActiveTermScreen(): Boolean =
-        !(!TerminalSolver.customGuiEnabled || TerminalUtils.currentTerm == null || currentTermScreen() == null) &&
-                TerminalUtils.currentTerm?.type?.getGUI() === this
+    private fun isActiveTermScreen() =
+        TerminalSolver.customGuiEnabled && TerminalUtils.currentTerm?.type?.getGUI() === this && currentTermScreen() != null
 
     private fun isTerminalOverrideKey(event: KeyEvent) =
         mc.options.keyDrop.matches(event) || mc.options.keyHotbarSlots.any { it.matches(event) }
@@ -97,22 +94,6 @@ abstract class TermGui {
         )
     }
 
-    protected fun createSlotVisualFromRendering(slotIndex: Int) = SlotVisual(
-        resolve = { TerminalUtils.currentTerm?.getSlotRendering(slotIndex) }
-    ) { x, y, w, h ->
-        TerminalUtils.currentTerm?.getSlotRendering(slotIndex)?.second?.let { renderSlotText(it, x, y, w, h, Colors.WHITE) }
-    }
-
-    fun customTerminalClick(slotIndex: Int, button: Int) {
-        TerminalUtils.currentTerm?.let { term ->
-            val screen = mc.gui.screen() ?: return@let
-            val btn = if (button == 0) GLFW.GLFW_MOUSE_BUTTON_3 else button
-            if (term.shouldProtect()) return@let
-            if (!GuiEvent.CustomTermGuiClick(screen, slotIndex, btn).postAndCatch() && term.canClick(slotIndex, btn))
-                term.click(slotIndex, btn, hideClicked)
-        }
-    }
-
     private fun render(guiGraphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val g       = grid ?: return
         val scale   = guiScale
@@ -125,12 +106,12 @@ abstract class TermGui {
         guiGraphics.pose().translate(g.originX, g.originY)
         guiGraphics.pose().scale(scale)
 
-        guiGraphics.roundedFill(-padding, -padding, g.w + padding, g.h + padding, TerminalSolver.backgroundColor.rgba, radius)
+        guiGraphics.roundedRect(-padding, -padding, g.w + padding, g.h + padding, TerminalSolver.backgroundColor.rgba, radius)
 
         g.slots.forEach { slot ->
             val (color, _) = slot.visual.resolve() ?: return@forEach
             if (slot.containsBase(baseMX, baseMY)) hoveredSlotIndex = slot.slotIndex
-            guiGraphics.roundedFill(slot.bx, slot.by, slot.bx + slot.size, slot.by + slot.size, color.rgba, radius)
+            guiGraphics.roundedRect(slot.bx, slot.by, slot.bx + slot.size, slot.by + slot.size, color.rgba, radius)
             slot.visual.onRenderContent?.invoke(guiGraphics, slot.bx, slot.by, slot.size, slot.size)
         }
 
@@ -144,5 +125,9 @@ abstract class TermGui {
 fun simpleTermGui(rows: Int, cols: Int, startRow: Int, startCol: Int): TermGui =
     object : TermGui() {
         override fun buildTerminal(screen: AbstractContainerScreen<*>) =
-            buildTerminalGrid(screen, rows, cols, startRow, startCol) { createSlotVisualFromRendering(it) }
+            buildTerminalGrid(screen, rows, cols, startRow, startCol) { slotIndex ->
+                SlotVisual({ TerminalUtils.currentTerm?.getSlotRendering(slotIndex) }) { x, y, w, h ->
+                    TerminalUtils.currentTerm?.getSlotRendering(slotIndex)?.second?.let { renderSlotText(it, x, y, w, h, if (TerminalUtils.currentTerm?.type == TerminalTypes.NUMBERS) TerminalSolver.numbersText else TerminalSolver.rubixText) }
+                }
+            }
     }

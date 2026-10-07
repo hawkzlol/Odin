@@ -4,12 +4,8 @@ import com.odtheking.odin.clickgui.settings.Setting.Companion.withDependency
 import com.odtheking.odin.clickgui.settings.impl.ActionSetting
 import com.odtheking.odin.clickgui.settings.impl.BooleanSetting
 import com.odtheking.odin.clickgui.settings.impl.ColorSetting
-import com.odtheking.odin.events.BlockUpdateEvent
-import com.odtheking.odin.events.ChatMessageEvent
-import com.odtheking.odin.events.LevelEvent
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.*
 import com.odtheking.odin.events.core.on
-import com.odtheking.odin.events.core.onReceive
 import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.Color.Companion.withAlpha
 import com.odtheking.odin.utils.Colors
@@ -19,7 +15,7 @@ import com.odtheking.odin.utils.render.drawFilledBox
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import com.odtheking.odin.utils.skyblock.dungeon.M7Phases
 import net.minecraft.core.BlockPos
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -65,18 +61,18 @@ object ArrowsDevice : Module(
         on<BlockUpdateEvent> {
             if (DungeonUtils.getF7Phase() != M7Phases.P3 || !devicePositions.contains(pos)) return@on
 
-            if (old.block == Blocks.EMERALD_BLOCK && updated.block == Blocks.DYED_TERRACOTTA.blue()) {
+            if (old.block == Blocks.EMERALD_BLOCK && updated.block == Blocks.DYED_TERRACOTTA.pick(DyeColor.BLUE)) {
                 markedPositions.add(pos.immutable())
                 if (targetPosition == pos) targetPosition = null
                 if (showAimPositions) optimalAimPositions = calculateOptimalAimPositions(pos)
-            } else if (old.block == Blocks.DYED_TERRACOTTA.blue() && updated.block == Blocks.EMERALD_BLOCK) {
+            } else if (old.block == Blocks.DYED_TERRACOTTA.pick(DyeColor.BLUE) && updated.block == Blocks.EMERALD_BLOCK) {
                 markedPositions.remove(pos)
                 targetPosition = pos.immutable()
                 if (showAimPositions) optimalAimPositions = calculateOptimalAimPositions(pos)
             }
         }
 
-        on<RenderEvent.Extract> {
+        on<RenderExtractEvent> {
             if (DungeonUtils.getF7Phase() != M7Phases.P3) return@on
 
             markedPositions.forEach { position ->
@@ -102,14 +98,14 @@ object ArrowsDevice : Module(
             optimalAimPositions = emptyList()
         }
 
-        on<ChatMessageEvent> {
+        on<MessageEvent.Chat> {
             if (DungeonUtils.getF7Phase() != M7Phases.P3 || !isPlayerInRoom || isDeviceComplete) return@on
-            if (deviceCompleteRegex.find(value)?.groupValues?.get(1) == mc.player?.name?.string) onComplete("Chat")
+            if (deviceCompleteRegex.find(message)?.groupValues?.get(1) == mc.player?.name?.string) onComplete("Chat")
         }
 
-        onReceive<ClientboundSetEntityDataPacket> {
-            if (DungeonUtils.getF7Phase() != M7Phases.P3 || !isPlayerInRoom || isDeviceComplete) return@onReceive
-            if (mc.level?.getEntity(id)?.name?.string == "Active") onComplete("Entity")
+        on<EntityEvent.SetData> {
+            if (DungeonUtils.getF7Phase() != M7Phases.P3 || !isPlayerInRoom || isDeviceComplete) return@on
+            if (entity.name.string == "Active") onComplete("Entity")
         }
     }
 

@@ -1,6 +1,6 @@
 package com.odtheking.odin.features.impl.dungeon.puzzlesolvers
 
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.RoomEnterEvent
 import com.odtheking.odin.features.impl.dungeon.puzzlesolvers.PuzzleSolvers.onPuzzleComplete
 import com.odtheking.odin.utils.Color
@@ -9,12 +9,12 @@ import com.odtheking.odin.utils.render.drawBeaconBeam
 import com.odtheking.odin.utils.render.drawFilledBox
 import com.odtheking.odin.utils.startsWithOneOf
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.Identifier
 import net.minecraft.world.phys.AABB
 
 object QuizSolver {
-    private var answers: MutableMap<String, List<String>> = JsonResourceLoader.loadJson(
-        "/assets/odin/puzzles/quizAnswers.json", mutableMapOf()
-    )
+
+    private var answers: MutableMap<String, List<String>> = JsonResourceLoader.loadJson(Identifier.fromNamespaceAndPath("odin", "puzzles/quiz-answers.json")) ?: mutableMapOf()
     private var triviaAnswers: List<String>? = null
 
     private var triviaOptions: MutableList<TriviaAnswer> = MutableList(3) { TriviaAnswer(null, false) }
@@ -61,7 +61,7 @@ object QuizSolver {
         triviaOptions[2].blockPos = getRealCoords(BlockPos(10, 70, 6))
     }
 
-    fun onRenderWorld(event: RenderEvent.Extract, quizColor: Color, quizDepth: Boolean) {
+    fun onRenderWorld(event: RenderExtractEvent, quizColor: Color, quizDepth: Boolean) {
         if (triviaAnswers == null || triviaOptions.isEmpty()) return
         triviaOptions.forEach { answer ->
             if (!answer.isCorrect) return@forEach

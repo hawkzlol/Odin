@@ -16,7 +16,7 @@ object RubixSim : TermSimGUI(
     TerminalTypes.RUBIX.termName, TerminalTypes.RUBIX.windowSize
 ) {
     private val order = listOf(DyeColor.ORANGE, DyeColor.YELLOW, DyeColor.GREEN, DyeColor.BLUE, DyeColor.RED)
-    private val panes = listOf(Items.STAINED_GLASS_PANE.orange(), Items.STAINED_GLASS_PANE.yellow(), Items.STAINED_GLASS_PANE.green(), Items.STAINED_GLASS_PANE.blue(), Items.STAINED_GLASS_PANE.red())
+    private val panes = listOf(Items.STAINED_GLASS_PANE.pick(DyeColor.ORANGE), Items.STAINED_GLASS_PANE.pick(DyeColor.YELLOW), Items.STAINED_GLASS_PANE.pick(DyeColor.GREEN), Items.STAINED_GLASS_PANE.pick(DyeColor.BLUE), Items.STAINED_GLASS_PANE.pick(DyeColor.RED))
     private val indices = listOf(12, 13, 14, 21, 22, 23, 30, 31, 32)
 
     override fun create() {

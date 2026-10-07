@@ -22,6 +22,9 @@ interface IrisCompatability {
             registerRenderType(CustomRenderType.LINES_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.LINES_TRANSLUCENT_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.QUADS_ESP, IrisShaderType.BASIC)
+            registerRenderType(CustomRenderType.QUADS_OPAQUE, IrisShaderType.BASIC)
+            registerRenderType(CustomRenderType.QUADS_TRANSLUCENT, IrisShaderType.BASIC)
+            registerRenderType(CustomRenderType.QUADS_TRANSLUCENT_ESP, IrisShaderType.BASIC)
             registerPipeline(CustomRenderPipelines.TEXTURED_QUADS_ESP, IrisShaderType.BASIC)
         }
     }
@@ -47,4 +50,4 @@ internal object IrisCompatImpl : IrisCompatability {
 
 internal object IrisCompatNoOp : IrisCompatability
 
-internal fun resolve(): IrisCompatability = if (FabricLoader.getInstance().isModLoaded("iris")) IrisCompatImpl else IrisCompatNoOp
+fun resolve(): IrisCompatability = if (FabricLoader.getInstance().isModLoaded("iris")) IrisCompatImpl else IrisCompatNoOp

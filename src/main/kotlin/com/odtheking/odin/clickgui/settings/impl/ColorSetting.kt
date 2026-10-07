@@ -185,6 +185,7 @@ class ColorSetting(
 
     override fun read(element: JsonElement, gson: Gson) {
         value = gson.fromJson(element, Color::class.java) ?: default.copy()
+        hexString = value.hex(allowAlpha)
     }
 
     private fun handleColorDrag(mouseX: Float, mouseY: Float, x: Float, y: Float, width: Float) {

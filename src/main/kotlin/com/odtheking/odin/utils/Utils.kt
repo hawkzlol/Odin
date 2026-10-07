@@ -6,7 +6,7 @@ import com.odtheking.odin.OdinMod
 import com.odtheking.odin.OdinMod.mc
 import com.odtheking.odin.clickgui.settings.Setting.Companion.withDependency
 import com.odtheking.odin.clickgui.settings.impl.ActionSetting
-import com.odtheking.odin.clickgui.settings.impl.NumberSetting
+import com.odtheking.odin.clickgui.settings.impl.rangeNumberSetting as NumberSetting
 import com.odtheking.odin.clickgui.settings.impl.StringSetting
 import com.odtheking.odin.features.Module
 import net.minecraft.core.BlockPos
@@ -187,10 +187,10 @@ fun formatNumber(numStr: String): String {
 
 fun Module.createSoundSettings(name: String, default: String, dependencies: () -> Boolean): () -> Triple<String, Float, Float> {
     val customSound = +StringSetting(name, default, desc = "Name of a custom sound to play.", length = 64).withDependency { dependencies() }
-    val pitch = +NumberSetting("$name Pitch", 1f, 0.1f, 2f, 0.01f, desc = "Pitch of the sound to play.").withDependency { dependencies() }
-    val volume = +NumberSetting("$name Volume", 1f, 0.1f, 1f, 0.01f, desc = "Volume of the sound to play.").withDependency { dependencies() }
+    val pitch = +NumberSetting("$name Pitch", 1f, 0.1..2.0, 0.01f, desc = "Pitch of the sound to play.").withDependency { dependencies() }
+    val volume = +NumberSetting("$name Volume", 1f, 0.1..1.0, 0.01f, desc = "Volume of the sound to play.").withDependency { dependencies() }
     val soundSettings = { Triple(customSound.value, volume.value, pitch.value) }
-    +ActionSetting("Play sound", desc = "Plays the selected sound.") { playSoundSettings(soundSettings()) }.withDependency { dependencies() }
+    +ActionSetting("Play $name", desc = "Plays the selected sound.") { playSoundSettings(soundSettings()) }.withDependency { dependencies() }
     return soundSettings
 }
 

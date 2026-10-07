@@ -1,13 +1,13 @@
 package com.odtheking.odin.features.impl.dungeon
 
+import com.odtheking.odin.clickgui.settings.impl.rangeNumberSetting as NumberSetting
+import com.odtheking.odin.clickgui.settings.impl.EnumSelectorSetting as SelectorSetting
 import com.odtheking.odin.OdinMod.scope
 import com.odtheking.odin.clickgui.settings.Setting.Companion.withDependency
 import com.odtheking.odin.clickgui.settings.impl.ActionSetting
 import com.odtheking.odin.clickgui.settings.impl.BooleanSetting
-import com.odtheking.odin.clickgui.settings.impl.NumberSetting
-import com.odtheking.odin.clickgui.settings.impl.SelectorSetting
 import com.odtheking.odin.commands.fetchAndDisplayCataStats
-import com.odtheking.odin.events.ChatMessageEvent
+import com.odtheking.odin.events.MessageEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Module
 import com.odtheking.odin.utils.formatNumber
@@ -30,12 +30,12 @@ object BetterPartyFinder : Module(
     private val sendKickLine by BooleanSetting("Send Kick Line", true, desc = "Sends a line in party chat to kick a player.").withDependency { statsDisplay }
 
     private val autoKickToggle by BooleanSetting("Auto Kick", desc = "Automatically kicks players who don't meet requirements.")
-    private val floor by SelectorSetting("Floor", "F7", Floor.entries.mapNotNull { if (!it.isMM) it.name else null }, desc = "Determines which floor to check pb.").withDependency { autoKickToggle }
+    private val floor by SelectorSetting("Floor", Floor.F7, desc = "Determines which floor to check pb.", options = Floor.entries.filter { !it.isMM }).withDependency { autoKickToggle }
     private val mmToggle by BooleanSetting("Master Mode", true, desc = "Use master mode times").withDependency { autoKickToggle }
     private val informKicked by BooleanSetting("Inform Kicked", desc = "Informs the player why they were kicked.").withDependency { autoKickToggle }
-    private val maximumSeconds by NumberSetting("Minimum PB", 400, 60, 480, 5, desc = "Minimum amount of seconds before kicking.", unit = "s").withDependency { autoKickToggle }
-    private val secretsMin by NumberSetting("Minimum Secrets", 0, 0, 200, desc = "Secret minimum in thousands for kicking.", unit = "k").withDependency { autoKickToggle }
-    private val magicalPowerReq by NumberSetting("Magical Power", 1300, 0, 2000, 20, desc = "Magical power minimum for kicking.").withDependency { autoKickToggle  }
+    private val maximumSeconds by NumberSetting("Minimum PB", 400, 60..480, 5, desc = "Minimum amount of seconds before kicking.", unit = "s").withDependency { autoKickToggle }
+    private val secretsMin by NumberSetting("Minimum Secrets", 0, 0..200, desc = "Secret minimum in thousands for kicking.", unit = "k").withDependency { autoKickToggle }
+    private val magicalPowerReq by NumberSetting("Magical Power", 1300, 0..2000, 20, desc = "Magical power minimum for kicking.").withDependency { autoKickToggle  }
     private val apiOffKick by BooleanSetting("Api Off Kick", false, desc = "Kicks if the player's api is off. If this setting is disabled, it will ignore the item check when players have api disabled.").withDependency { autoKickToggle }
 
     private val kickCache by BooleanSetting("Kick Cache", true, desc = "Caches kicked players to automatically kick when they attempt to rejoin.").withDependency { autoKickToggle }
@@ -47,9 +47,9 @@ object BetterPartyFinder : Module(
     private val kickedList = mutableSetOf<String>()
 
     init {
-        on<ChatMessageEvent> {
+        on<MessageEvent.Chat> {
             if (!statsDisplay && !autoKickToggle) return@on
-            val (name) = pfRegex.find(value)?.destructured ?: return@on
+            val (name) = pfRegex.find(message)?.destructured ?: return@on
             if (name == mc.player?.name?.string) return@on
 
             scope.launch {
@@ -71,12 +71,12 @@ object BetterPartyFinder : Module(
                     val currentProfile = profile.getOrNull()?.memberData ?: return@launch modMessage("Could not find member data for $name")
 
                     val dungeon = if (!mmToggle) currentProfile.dungeons.dungeonTypes.catacombs else currentProfile.dungeons.dungeonTypes.mastermode
-                    dungeon.fastestTimeSPlus["$floor"]?.let {
+                    dungeon.fastestTimeSPlus["${floor.floorNumber}"]?.let {
                         if (maximumSeconds < it / 1000)
                             kickedReasons.add(
-                                "Did not meet time req for ${if (mmToggle) "m" else "f"}$floor: ${formatTime(it.toLong())}/${formatTime(maximumSeconds * 1000L, 0)}"
+                                "Did not meet time req for ${if (mmToggle) "m" else "f"}${floor.floorNumber}: ${formatTime(it.toLong())}/${formatTime(maximumSeconds * 1000L, 0)}"
                             )
-                    } ?: kickedReasons.add("Couldn't confirm completion status for ${if (mmToggle) "m" else "f"}$floor")
+                    } ?: kickedReasons.add("Couldn't confirm completion status for ${if (mmToggle) "m" else "f"}${floor.floorNumber}")
 
                     currentProfile.dungeons.secrets.let { currentProfile.playerStats.bloodMobKills / 4 + it }.let {
                         if (it < (secretsMin * 1000)) kickedReasons.add("Did not meet secret req: ${formatNumber(it.toString())}/${secretsMin}k")

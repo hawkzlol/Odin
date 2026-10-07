@@ -4,7 +4,7 @@ import com.github.stivais.commodore.Commodore
 import com.github.stivais.commodore.utils.GreedyString
 import com.odtheking.odin.OdinMod
 import com.odtheking.odin.OdinMod.mc
-import com.odtheking.odin.events.ChatMessageEvent
+import com.odtheking.odin.events.MessageEvent
 import com.odtheking.odin.features.ModuleManager
 import com.odtheking.odin.features.impl.boss.MelodyMessage.melodyWebSocket
 import com.odtheking.odin.features.impl.boss.WitherDragonState
@@ -16,10 +16,7 @@ import com.odtheking.odin.features.impl.dungeon.map.WorldScan
 import com.odtheking.odin.features.impl.nether.NoPre
 import com.odtheking.odin.features.impl.render.ClickGUIModule.webSocketUrl
 import com.odtheking.odin.features.impl.render.PlayerSize
-import com.odtheking.odin.features.impl.render.PlayerSize.DEV_SERVER
-import com.odtheking.odin.features.impl.render.PlayerSize.buildDevBody
 import com.odtheking.odin.utils.*
-import com.odtheking.odin.utils.network.WebUtils.postData
 import com.odtheking.odin.utils.skyblock.KuudraUtils
 import com.odtheking.odin.utils.skyblock.LocationUtils
 import com.odtheking.odin.utils.skyblock.PartyUtils
@@ -27,7 +24,6 @@ import com.odtheking.odin.utils.skyblock.Supply
 import com.odtheking.odin.utils.skyblock.dungeon.Blessing
 import com.odtheking.odin.utils.skyblock.dungeon.DungeonUtils
 import com.odtheking.odin.utils.skyblock.dungeon.Floor
-import com.odtheking.odin.utils.ui.rendering.NVGRenderer
 import kotlinx.coroutines.launch
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
@@ -56,7 +52,7 @@ val devCommand = Commodore("oddev") {
     }
 
     literal("simulate").runs { greedyString: GreedyString ->
-        ChatMessageEvent(greedyString.string, Component.literal(greedyString.string)).postAndCatch()
+        MessageEvent.Chat(greedyString.string, Component.literal(greedyString.string)).postAndCatch()
         modMessage("§8Simulated message: ${greedyString.string}")
     }
 
@@ -70,16 +66,6 @@ val devCommand = Commodore("oddev") {
         PlayerSize.clearCustomProperties()
     }
 
-    literal("adddev").runs { name: String, password: String, xSize: Float?, ySize: Float?, zSize: Float? ->
-        val x = xSize ?: 0.6f
-        val y = ySize ?: 0.6f
-        val z = zSize ?: 0.6f
-        modMessage("Sending data... name: $name, x: $x, y: $y, z: $z")
-        OdinMod.scope.launch {
-            modMessage(postData(DEV_SERVER, buildDevBody(name, x, y, z, " ", password)).getOrNull())
-        }
-    }
-
     literal("generatefeaturelist").runs {
         fun generateFeatureList(): String {
             val featureList = StringBuilder()
@@ -87,7 +73,7 @@ val devCommand = Commodore("oddev") {
             for ((category, modulesInCategory) in ModuleManager.modulesByCategory) {
                 featureList.appendLine("Category: ${category.name}")
                 for (module in modulesInCategory.sortedByDescending {
-                    NVGRenderer.textWidth(it.name, 16f, NVGRenderer.defaultFont)
+                    mc.font.width(it.name)
                 }) featureList.appendLine("- ${module.name}: ${module.description}")
                 featureList.appendLine()
             }

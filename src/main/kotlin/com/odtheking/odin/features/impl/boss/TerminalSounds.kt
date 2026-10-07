@@ -1,11 +1,8 @@
 package com.odtheking.odin.features.impl.boss
 
-import com.odtheking.odin.clickgui.settings.Setting.Companion.withDependency
 import com.odtheking.odin.clickgui.settings.impl.BooleanSetting
-import com.odtheking.odin.events.ChatMessageEvent
-import com.odtheking.odin.events.GuiEvent
+import com.odtheking.odin.events.MessageEvent
 import com.odtheking.odin.events.TerminalEvent
-import com.odtheking.odin.events.core.EventPriority
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.events.core.onReceive
 import com.odtheking.odin.features.Module
@@ -26,7 +23,6 @@ object TerminalSounds : Module(
     private val clickSoundSettings = createSoundSettings("Click Sound", "entity.blaze.hurt") { clickSounds }
     private val completeSounds by BooleanSetting("Complete Sounds", false, desc = "Plays a sound when you complete a terminal.")
     private val completeSoundSettings = createSoundSettings("Completion Sound", "entity.experience_orb.pickup") { completeSounds }
-    private val cancelLastClick by BooleanSetting("Cancel Last Click", false, desc = "Cancels the last click sound instead of playing both click and completion sound.").withDependency { clickSounds && completeSounds }
 
     private val coreRegex = Regex("^The Core entrance is opening!$")
     private val gateRegex = Regex("^The gate has been destroyed!$")
@@ -38,12 +34,9 @@ object TerminalSounds : Module(
             else if (shouldReplaceSounds && completeSounds && !clickSounds) playSoundSettings(completeSoundSettings())
         }
 
-        on<GuiEvent.SlotClick> (EventPriority.HIGHEST) {
-            if (shouldReplaceSounds) playSoundForSlot(slotIndex, button)
-        }
-
-        on<GuiEvent.CustomTermGuiClick> (EventPriority.HIGHEST) {
-            if (shouldReplaceSounds) playSoundForSlot(slot, button)
+        on<TerminalEvent.Click> {
+            if ((solution.isEmpty() || (terminal.type == TerminalTypes.MELODY && slotIndex == 43)) && completeSounds) playSoundSettings(completeSoundSettings())
+            else if (clickSounds) playTerminalSound()
         }
 
         onReceive<ClientboundSoundPacket> {
@@ -51,22 +44,12 @@ object TerminalSounds : Module(
                 it.cancel()
         }
 
-        on<ChatMessageEvent> {
+        on<MessageEvent.Chat> {
             if (!DungeonUtils.inDungeons || !shouldReplaceSounds) return@on
             when {
-                value.matches(gateRegex) -> playSoundAtPlayer(SoundEvents.NOTE_BLOCK_PLING.value())
-                value.matches(coreRegex) -> playSoundAtPlayer(SoundEvents.NOTE_BLOCK_PLING.value())
+                message.matches(gateRegex) -> playSoundAtPlayer(SoundEvents.NOTE_BLOCK_PLING.value())
+                message.matches(coreRegex) -> playSoundAtPlayer(SoundEvents.NOTE_BLOCK_PLING.value())
             }
-        }
-    }
-
-    private fun playSoundForSlot(slot: Int, button: Int) {
-        with(TerminalUtils.currentTerm ?: return) {
-            if (!canClick(slot, button)) return
-            if ((solution.size == 1 || (type == TerminalTypes.MELODY && slot == 43)) && completeSounds) {
-                if (!cancelLastClick) playTerminalSound()
-                playSoundSettings(completeSoundSettings())
-            } else playTerminalSound()
         }
     }
 

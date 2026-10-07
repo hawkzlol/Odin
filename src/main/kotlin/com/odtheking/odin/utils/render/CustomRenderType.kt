@@ -3,14 +3,12 @@ package com.odtheking.odin.utils.render
 import net.minecraft.client.renderer.rendertype.LayeringTransform
 import net.minecraft.client.renderer.rendertype.OutputTarget
 import net.minecraft.client.renderer.rendertype.RenderSetup
-import net.minecraft.client.renderer.rendertype.RenderType
-import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.resources.Identifier
-import java.util.concurrent.ConcurrentHashMap
+import net.minecraft.client.renderer.rendertype.RenderTypes
+import net.minecraft.client.renderer.rendertype.RenderType
 
 object CustomRenderType {
-
-    private val texturedQuadsEsp = ConcurrentHashMap<Identifier, RenderType>()
+    private val texturedQuadsEsp = java.util.concurrent.ConcurrentHashMap<net.minecraft.resources.Identifier, RenderType>()
 
     // RenderTypes.LINES, RenderTypes.LINES_TRANSLUCENT || LINES_ESP, LINES_TRANSLUCENT_ESP
 
@@ -29,18 +27,37 @@ object CustomRenderType {
             .createRenderSetup()
     )
 
-    // RenderTypes.DEBUG_FILLED_BOX || QUADS_ESP
+    // RenderTypes.DEBUG_FILLED_BOX / RenderTypes.debugFilledBox() || QUADS_OPAQUE / QUADS_TRANSLUCENT / QUADS_ESP / QUADS_TRANSLUCENT_ESP
 
-    val QUADS_ESP: RenderType = RenderType.create(
-        "quads-esp",
-        RenderSetup.builder(CustomRenderPipelines.QUADS_ESP)
-            .sortOnUpload()
+    val QUADS_OPAQUE: RenderType = RenderType.create(
+        "quads-opaque",
+        RenderSetup.builder(CustomRenderPipelines.QUADS_OPAQUE)
             .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
             .createRenderSetup()
     )
 
+    val QUADS_TRANSLUCENT: RenderType = RenderType.create(
+        "quads-translucent",
+        RenderSetup.builder(CustomRenderPipelines.QUADS_TRANSLUCENT)
+            .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
+            .sortOnUpload()
+            .createRenderSetup()
+    )
+
+    val QUADS_ESP: RenderType = RenderType.create(
+        "quads-esp",
+        RenderSetup.builder(CustomRenderPipelines.QUADS_ESP)
+            .createRenderSetup()
+    )
+
+    val QUADS_TRANSLUCENT_ESP: RenderType = RenderType.create(
+        "quads-translucent-esp",
+        RenderSetup.builder(CustomRenderPipelines.QUADS_TRANSLUCENT_ESP)
+            .sortOnUpload()
+            .createRenderSetup()
+    )
     fun texturedQuad(texture: Identifier, depth: Boolean): RenderType {
-        if (depth) return RenderTypes.entityTranslucent(texture)
+        if (depth) return RenderTypes.entityCutout(texture)
 
         return texturedQuadsEsp.computeIfAbsent(texture) {
             RenderType.create(

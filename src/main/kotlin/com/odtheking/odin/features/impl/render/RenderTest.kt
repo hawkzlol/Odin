@@ -1,9 +1,9 @@
 package com.odtheking.odin.features.impl.render
 
+import com.odtheking.odin.clickgui.settings.impl.rangeNumberSetting as NumberSetting
+import com.odtheking.odin.clickgui.settings.impl.EnumSelectorSetting as SelectorSetting
 import com.odtheking.odin.clickgui.settings.DevModule
-import com.odtheking.odin.clickgui.settings.impl.NumberSetting
-import com.odtheking.odin.clickgui.settings.impl.SelectorSetting
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.core.on
 import com.odtheking.odin.features.Category
 import com.odtheking.odin.features.Module
@@ -19,19 +19,13 @@ object RenderTest : Module(
     description = "Test rendering stuff",
     category = Category.RENDER,
 ) {
+    val boxStyle by SelectorSetting("Styled Box Style", BoxStyle.FILLED, desc = "Style of the styled box")
 
-    val boxStyle by SelectorSetting(
-        name = "Styled Box Style",
-        default = "FilledBox",
-        options = listOf("FilledBox", "WireFrame", "Both"),
-        desc = "Style of the styled box"
-    )
-
-    val boxCount by NumberSetting("Box Count", 0, 0, 200000, 1, desc = "Approx number of boxes to render")
-    val boxLevels by NumberSetting("Box Levels", 4, 1, 12, 1, desc = "Vertical layers for boxes")
+    val boxCount by NumberSetting("Box Count", 0, 0..200000, 1, desc = "Approx number of boxes to render")
+    val boxLevels by NumberSetting("Box Levels", 4, 1..12, 1, desc = "Vertical layers for boxes")
 
     init {
-        on<RenderEvent.Extract> {
+        on<RenderExtractEvent> {
             val player = mc.player ?: return@on
 
             val frameDelta = mc.deltaTracker.realtimeDeltaTicks
@@ -70,39 +64,44 @@ object RenderTest : Module(
                 color = Color(0x7eb4c7ff),
             )
 
-            val desiredCount = boxCount.coerceAtLeast(0)
-            val layers = boxLevels.coerceAtLeast(1)
+            try {
+                run {
+                    val desiredCount = boxCount.coerceAtLeast(0)
+                    val layers = boxLevels.coerceAtLeast(1)
 
-            if (desiredCount > 0) {
-                val perLayer = ceil(desiredCount.toDouble() / layers.toDouble()).toInt()
-                val side = ceil(sqrt(perLayer.toDouble())).toInt()
-                val range = side / 2
+                    if (desiredCount > 0) {
+                        val perLayer = ceil(desiredCount.toDouble() / layers.toDouble()).toInt()
+                        val side = ceil(sqrt(perLayer.toDouble())).toInt()
+                        val range = side / 2
 
-                var drawn = 0
-                outer@ for (by in 0 until layers) {
-                    val byOff = (by - (layers / 2)).toDouble()
-                    for (bx in -range..range) {
-                        for (bz in -range..range) {
-                            if (drawn >= desiredCount) break@outer
+                        var drawn = 0
+                        outer@ for (by in 0 until layers) {
+                            val byOff = (by - (layers / 2)).toDouble()
+                            for (bx in -range..range) {
+                                for (bz in -range..range) {
+                                    if (drawn >= desiredCount) break@outer
 
-                            val bxOff = bx.toDouble()
-                            val bzOff = bz.toDouble()
+                                    val bxOff = bx.toDouble()
+                                    val bzOff = bz.toDouble()
 
-                            val minX = playerPos.x + bxOff - 0.45
-                            val minY = playerPos.y + byOff - 0.45
-                            val minZ = playerPos.z + bzOff - 0.45
-                            val aabb = AABB(minX, minY, minZ, minX + 0.9, minY + 0.9, minZ + 0.9)
+                                    val minX = playerPos.x + bxOff - 0.45
+                                    val minY = playerPos.y + byOff - 0.45
+                                    val minZ = playerPos.z + bzOff - 0.45
+                                    val aabb = AABB(minX, minY, minZ, minX + 0.9, minY + 0.9, minZ + 0.9)
 
-                            val cInt = (0xff000000.toInt() or (((bx + range) and 0xff) shl 16) or (((by + 32) and 0xff) shl 8) or ((bz + range) and 0xff))
-                            val c = Color(cInt)
+                                    val cInt = (0xff000000.toInt() or (((bx + range) and 0xff) shl 16) or (((by + 32) and 0xff) shl 8) or ((bz + range) and 0xff))
+                                    val c = Color(cInt)
 
-                            drawStyledBox(aabb = aabb, color = c, style = 2)
+                                    drawStyledBox(aabb = aabb, color = c, style = BoxStyle.FILLED_OUTLINE)
 
-                            drawn++
+                                    drawn++
+                                }
+                            }
                         }
                     }
                 }
-            }
+
+            } catch (_: Exception) { }
         }
     }
 

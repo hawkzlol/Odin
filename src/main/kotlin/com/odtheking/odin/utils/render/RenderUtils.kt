@@ -3,12 +3,15 @@ package com.odtheking.odin.utils.render
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.odtheking.odin.OdinMod.mc
-import com.odtheking.odin.events.RenderEvent
+import com.odtheking.odin.events.RenderExtractEvent
 import com.odtheking.odin.events.core.EventBus
 import com.odtheking.odin.features.impl.dungeon.dungeonwaypoints.DungeonWaypoints
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.Color.Companion.multiplyAlpha
 import com.odtheking.odin.utils.addVec
+import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases
+import net.minecraft.client.renderer.feature.TextFeatureRenderer
+import org.joml.Matrix4f
 import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -42,7 +45,7 @@ object RenderBatchManager {
      */
     fun extract(context: LevelExtractionContext) {
         val consumer = RenderConsumer()
-        EventBus.post(RenderEvent.Extract(context, consumer))
+        EventBus.post(RenderExtractEvent(context, consumer))
         (context.levelState() as FabricRenderState).setData(ODIN_WORLD_RENDER_DATA_KEY, consumer.freeze())
     }
 
@@ -90,7 +93,12 @@ private fun WireBoxRenderData.renderType(): RenderType = resolveLineRenderType(
 )
 
 private fun FilledBoxRenderData.renderType(): RenderType =
-    if (depth) RenderTypes.debugFilledBox() else CustomRenderType.QUADS_ESP
+    when {
+        depth && alpha >= 0.999f -> CustomRenderType.QUADS_OPAQUE
+        depth -> CustomRenderType.QUADS_TRANSLUCENT
+        alpha >= 0.999f -> CustomRenderType.QUADS_ESP
+        else -> CustomRenderType.QUADS_TRANSLUCENT_ESP
+    }
 
 private val LINE_RENDER_TYPES = listOf(
     RenderTypes.LINES,
@@ -130,7 +138,7 @@ private fun PoseStack.submitQueuedFilledBoxes(
 ) {
     if (data.filledBoxes.isEmpty()) return
 
-    for (renderType in listOf(RenderTypes.debugFilledBox(), CustomRenderType.QUADS_ESP)) {
+    for (renderType in listOf(CustomRenderType.QUADS_OPAQUE, CustomRenderType.QUADS_TRANSLUCENT, CustomRenderType.QUADS_ESP, CustomRenderType.QUADS_TRANSLUCENT_ESP)) {
         if (data.filledBoxes.none { it.renderType() === renderType }) continue
 
         submitNodeCollector.submitCustomGeometry(this, renderType) { pose, buffer ->
@@ -199,12 +207,12 @@ private fun PoseStack.submitQueuedBeaconBeams(
                 submitNodeCollector,
                 BeaconRenderer.BEAM_LOCATION,
                 1f,
-                beacon.gameTime.toFloat(),
+                beacon.animationTime,
                 0,
-                319,
+                BeaconRenderer.MAX_RENDER_Y,
                 beacon.color,
-                0.2f * radiusScale,
-                0.25f * radiusScale,
+                BeaconRenderer.SOLID_BEAM_RADIUS * radiusScale,
+                BeaconRenderer.BEAM_GLOW_RADIUS * radiusScale,
             )
         } finally {
             popPose()
@@ -234,7 +242,14 @@ private fun PoseStack.submitQueuedTexts(
             val formattedText = FormattedCharSequence { output ->
                 StringDecomposer.iterateFormatted(textData.text, Style.EMPTY, output)
             }
-            textCollector.submitText(
+            if (!textData.depth) {
+                submitNodeCollector.submitCustom(SubmitRenderPhases.AFTER_TERRAIN,
+                    TextFeatureRenderer.Submit(
+                        Matrix4f(last().pose()), -textData.width / 2f, 0f, formattedText,
+                        true, Font.DisplayMode.SEE_THROUGH, LightCoordsUtil.FULL_BRIGHT, -1, 0, 0,
+                    ),
+                )
+            } else textCollector.submitText(
                 this,
                 -textData.width / 2f,
                 0f,
@@ -252,7 +267,7 @@ private fun PoseStack.submitQueuedTexts(
     }
 }
 
-fun RenderEvent.Extract.drawTexturedQuad(
+fun RenderExtractEvent.drawTexturedQuad(
     texture: Identifier,
     pos: Vec3,
     width: Float,
@@ -291,17 +306,17 @@ fun RenderEvent.Extract.drawTexturedQuad(
     )
 }
 
-fun RenderEvent.Extract.drawTracer(to: Vec3, color: Color, depth: Boolean, thickness: Float = 3f) {
+fun RenderExtractEvent.drawTracer(to: Vec3, color: Color, depth: Boolean, thickness: Float = 3f) {
     val camera = context.levelState().cameraRenderState
     val from = camera.pos.add(Vec3.directionFromRotation(camera.xRot, camera.yRot))
     drawLine(listOf(from, to), color, depth, thickness)
 }
 
-fun RenderEvent.Extract.drawLine(points: Collection<Vec3>, color: Color, depth: Boolean, thickness: Float = 3f) {
+fun RenderExtractEvent.drawLine(points: Collection<Vec3>, color: Color, depth: Boolean, thickness: Float = 3f) {
     drawLine(points, color, color, depth, thickness)
 }
 
-fun RenderEvent.Extract.drawLine(
+fun RenderExtractEvent.drawLine(
     points: Collection<Vec3>,
     color1: Color,
     color2: Color,
@@ -335,7 +350,7 @@ fun RenderEvent.Extract.drawLine(
     }
 }
 
-fun RenderEvent.Extract.drawWireFrameBox(
+fun RenderExtractEvent.drawWireFrameBox(
     aabb: AABB,
     color: Color,
     thickness: Float = 3f,
@@ -359,7 +374,7 @@ fun RenderEvent.Extract.drawWireFrameBox(
     )
 }
 
-fun RenderEvent.Extract.drawFilledBox(aabb: AABB, color: Color, depth: Boolean = false) {
+fun RenderExtractEvent.drawFilledBox(aabb: AABB, color: Color, depth: Boolean = false) {
     consumer.addFilledBox(
         FilledBoxRenderData(
             aabb.minX,
@@ -377,23 +392,25 @@ fun RenderEvent.Extract.drawFilledBox(aabb: AABB, color: Color, depth: Boolean =
     )
 }
 
-fun RenderEvent.Extract.drawStyledBox(
+enum class BoxStyle { FILLED, OUTLINE, FILLED_OUTLINE }
+
+fun RenderExtractEvent.drawStyledBox(
     aabb: AABB,
     color: Color,
-    style: Int = 0,
+    style: BoxStyle = BoxStyle.FILLED,
     depth: Boolean = true,
 ) {
     when (style) {
-        0 -> drawFilledBox(aabb, color, depth = depth)
-        1 -> drawWireFrameBox(aabb, color, depth = depth)
-        2 -> {
-            drawFilledBox(aabb, color.multiplyAlpha(0.5f), depth = depth)
+        BoxStyle.FILLED -> drawFilledBox(aabb, color, depth = depth)
+        BoxStyle.OUTLINE -> drawWireFrameBox(aabb, color, depth = depth)
+        BoxStyle.FILLED_OUTLINE -> {
+            drawFilledBox(aabb.inflate(0.00005), color.multiplyAlpha(0.5f), depth = depth)
             drawWireFrameBox(aabb, color, depth = depth)
         }
     }
 }
 
-fun RenderEvent.Extract.drawBeaconBeam(position: BlockPos, color: Color) {
+fun RenderExtractEvent.drawBeaconBeam(position: BlockPos, color: Color) {
     consumer.addBeaconBeam(
         BeaconRenderData(
             position.x,
@@ -401,12 +418,12 @@ fun RenderEvent.Extract.drawBeaconBeam(position: BlockPos, color: Color) {
             position.z,
             color.rgba,
             mc.player?.isScoping == true,
-            context.level().gameTime,
+            context.level().gameTime.mod(40L) + mc.deltaTracker.getGameTimeDeltaPartialTick(false),
         ),
     )
 }
 
-fun RenderEvent.Extract.drawText(text: String, pos: Vec3, scale: Float, depth: Boolean) {
+fun RenderExtractEvent.drawText(text: String, pos: Vec3, scale: Float, depth: Boolean) {
     val font = mc.font
     val renderedText = if (font.isBidirectional) font.bidirectionalShaping(text) else text
     consumer.addText(
@@ -422,7 +439,7 @@ fun RenderEvent.Extract.drawText(text: String, pos: Vec3, scale: Float, depth: B
     )
 }
 
-fun RenderEvent.Extract.drawCustomBeacon(
+fun RenderExtractEvent.drawCustomBeacon(
     title: String,
     position: BlockPos,
     color: Color,
@@ -434,14 +451,14 @@ fun RenderEvent.Extract.drawCustomBeacon(
     drawWireFrameBox(AABB(position), color, depth = false)
     drawBeaconBeam(position, color)
     drawText(
-        if (distance) "$title §r§f(§3${dist}m§f)" else title,
+        if (distance) "$title §f(§3${dist}m§f)" else title,
         Vec3.atCenterOf(position).addVec(y = 1.7),
         if (increase) max(1f, dist * 0.05f) else 2f,
         false,
     )
 }
 
-fun RenderEvent.Extract.drawCylinder(
+fun RenderExtractEvent.drawCylinder(
     center: Vec3,
     radius: Float,
     height: Float,
@@ -489,7 +506,7 @@ fun RenderEvent.Extract.drawCylinder(
     }
 }
 
-fun RenderEvent.Extract.drawBoxes(waypoints: Collection<DungeonWaypoints.DungeonWaypoint>, disableDepth: Boolean) {
+fun RenderExtractEvent.drawBoxes(waypoints: Collection<DungeonWaypoints.DungeonWaypoint>, disableDepth: Boolean) {
     if (waypoints.isEmpty()) return
 
     for (waypoint in waypoints) {
