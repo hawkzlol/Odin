@@ -56,7 +56,7 @@ class RubixHandler : TerminalHandler(TerminalTypes.RUBIX) {
             2 -> TerminalSolver.rubixColor2
             -1, 4 -> TerminalSolver.oppositeRubixColor1
             else -> TerminalSolver.oppositeRubixColor2
-        } to clicksRequired.toString()
+        } to if (TerminalSolver.inRubixNumbers) clicksRequired.toString() else null
     }
 
     private companion object {

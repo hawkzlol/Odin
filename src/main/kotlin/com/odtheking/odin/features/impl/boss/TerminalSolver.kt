@@ -43,6 +43,10 @@ object TerminalSolver : Module(
     val shouldFirstClickProtWithTicks by BooleanSetting("Server Lag", false, desc = "Prevents bans from clicking when the server lags after opening the terminal (disabled in singleplayer").withDependency { firstClickProtSettings }
     val firstClickProtTicks by NumberSetting("Lag Protection Ticks", 8, 7..16, unit = "ticks", desc = "Each tick = 50ms (recommended value is 8)").withDependency { shouldFirstClickProtWithTicks && firstClickProtSettings }
 
+    private val numbersCustomizer by DropdownSetting("Numbers Customizer", desc = "Choose which terminals display number labels.")
+    val inOrderNumbers by BooleanSetting("In Order Numbers", true, desc = "Show number labels in click-in-order terminals.").withDependency { numbersCustomizer }
+    val inRubixNumbers by BooleanSetting("In Rubix Numbers", true, desc = "Show click counts in Rubix terminals.").withDependency { numbersCustomizer }
+
     private val showColors by DropdownSetting("Color Settings", desc = "Color options for the terminal solver.")
     val backgroundColor by ColorSetting("Background", Colors.gray26.withAlpha(0.5f), true, desc = "Background color of the terminal solver.").withDependency { showColors }
 
