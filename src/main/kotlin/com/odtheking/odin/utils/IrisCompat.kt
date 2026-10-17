@@ -19,6 +19,7 @@ interface IrisCompatability {
 
     companion object : IrisCompatability by resolve() {
         init {
+            registerRenderType(CustomRenderType.LINES_TRANSLUCENT_DEPTH, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.LINES_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.LINES_TRANSLUCENT_ESP, IrisShaderType.LINES)
             registerRenderType(CustomRenderType.QUADS_ESP, IrisShaderType.BASIC)

@@ -94,10 +94,10 @@ object BloodCamp : Module(
         on<MessageEvent.Chat> {
             if (!DungeonUtils.inClear) return@on
             if (BLOOD_START_REGEX.matches(message)) {
-                moveTimeSeconds = 20f
+                moveTimeSeconds = 20.5f
                 if (sendMoveTime) modMessage("Watcher will move in ${moveTimeSeconds?.toFixed()}s.")
 
-                schedule(400, true) {
+                schedule(410, true) {
                     if (sendMoveTime) alert("Kill Mobs")
                     moveTimeSeconds = null
                 }

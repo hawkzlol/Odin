@@ -111,9 +111,10 @@ object DungeonUtils {
 
     inline val princeKilled: Boolean
         get() = DungeonListener.dungeonStats.princeKilled
-
-    inline val batKilled: Int
+    inline val batKilled: Boolean
         get() = DungeonListener.dungeonStats.batKilled
+    inline val numBatsKilled: Int
+        get() = DungeonListener.dungeonStats.numBatsKilled
 
     inline val currentRoom: DungeonRoom?
         get() = WorldScan.currentRoom
@@ -122,7 +123,7 @@ object DungeonUtils {
         get() = DungeonListener.paul
 
     inline val getBonusScore: Int
-        get() = calculateDungeonBonusScore(cryptCount, mimicKilled, princeKilled, batKilled, isPaul)
+        get() = calculateDungeonBonusScore(cryptCount, mimicKilled, princeKilled, numBatsKilled, isPaul)
 
     inline val bloodDone: Boolean
         get() = DungeonListener.dungeonStats.bloodDone

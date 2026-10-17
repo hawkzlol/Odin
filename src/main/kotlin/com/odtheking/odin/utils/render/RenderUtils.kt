@@ -77,7 +77,7 @@ private fun Int.isFullyOpaque(): Boolean = (this ushr 24 and 0xFF) == 0xFF
 
 private fun resolveLineRenderType(depth: Boolean, fullyOpaque: Boolean): RenderType = when {
     depth && fullyOpaque -> RenderTypes.LINES
-    depth -> RenderTypes.LINES_TRANSLUCENT
+    depth -> CustomRenderType.LINES_TRANSLUCENT_DEPTH
     fullyOpaque -> CustomRenderType.LINES_ESP
     else -> CustomRenderType.LINES_TRANSLUCENT_ESP
 }
@@ -102,7 +102,7 @@ private fun FilledBoxRenderData.renderType(): RenderType =
 
 private val LINE_RENDER_TYPES = listOf(
     RenderTypes.LINES,
-    RenderTypes.LINES_TRANSLUCENT,
+    CustomRenderType.LINES_TRANSLUCENT_DEPTH,
     CustomRenderType.LINES_ESP,
     CustomRenderType.LINES_TRANSLUCENT_ESP,
 )

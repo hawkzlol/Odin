@@ -1,24 +1,34 @@
 package com.odtheking.odin.utils.render
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.PrimitiveTopology
 import com.mojang.blaze3d.pipeline.BlendFunction
 import com.mojang.blaze3d.pipeline.ColorTargetState
 import com.mojang.blaze3d.pipeline.DepthStencilState
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.platform.CompareOp
-import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import net.minecraft.client.renderer.BindGroupLayouts
 import java.util.Optional
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
 
 object CustomRenderPipelines {
-    private val NO_DEPTH = DepthStencilState(CompareOp.ALWAYS_PASS, false)
+    private val NO_DEPTH = DepthStencilState(CompareOp.ALWAYS_PASS, true, 1f, 1f)
+    private val DEPTH_WRITE = DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true)
     private val TRANSLUCENT = ColorTargetState(BlendFunction.TRANSLUCENT)
+
+    val LINES_TRANSLUCENT_DEPTH: RenderPipeline = RenderPipelines.register(
+        RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
+            .withDepthStencilState(DEPTH_WRITE)
+            .withColorTargetState(TRANSLUCENT)
+            .withLocation("odin/lines_translucent_depth")
+            .build()
+    )
 
     val LINES_ESP: RenderPipeline = RenderPipelines.register(
         RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
             .withDepthStencilState(NO_DEPTH)
+            .withColorTargetState(ColorTargetState.DEFAULT)
             .withLocation("odin/lines_esp")
             .build()
     )
@@ -33,6 +43,7 @@ object CustomRenderPipelines {
 
     val QUADS_OPAQUE: RenderPipeline = RenderPipelines.register(
         RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
+            .withDepthStencilState(DEPTH_WRITE)
             .withCull(false)
             .withLocation("odin/quads_opaque")
             .build()
@@ -48,6 +59,7 @@ object CustomRenderPipelines {
 
     val QUADS_TRANSLUCENT: RenderPipeline = RenderPipelines.register(
         RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
+            .withDepthStencilState(DEPTH_WRITE)
             .withColorTargetState(TRANSLUCENT)
             .withCull(false)
             .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR)

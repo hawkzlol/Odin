@@ -275,3 +275,12 @@ source tree match the pre-update snapshot exactly. New standalone waypoint scree
 isolated Compose support; enum/range adapters expose new settings through the old controls.
 Core/public builds pass 54/60 tests. No 0.3.6 game launch or deployment was performed.
 See `FULL_SYNC_AUDIT_0_3_6.md` for scope, compatibility details and verification limits.
+
+
+## Full main synchronization (2026-10-17)
+
+Updated to upstream `f2840a0` (0.3.7 development snapshot) while keeping Minecraft 26.2,
+our ClickGUI and Numbers Customizer. All 270 upstream files were inventoried; all 71 modules
+are present and all 73 protected UI files remain unchanged. Core/public clean builds pass
+57/63 tests. No game launch or publication. See `FULL_SYNC_AUDIT_2026_10_17.md` for the
+complete per-file comparison and compatibility decisions.

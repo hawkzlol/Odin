@@ -26,10 +26,10 @@ internal fun buildDevPlayerBody(
     password: String,
 ): String = Gson().toJson(
     mapOf(
-        "devName" to devName,
-        "size" to listOf(sizeX, sizeY, sizeZ),
-        "customName" to customName,
-        "password" to password,
+        "DevName" to devName,
+        "Size" to listOf(sizeX, sizeY, sizeZ),
+        "CustomName" to customName,
+        "Password" to password,
     ),
 )
 
@@ -37,12 +37,12 @@ object PlayerSize : Module(
     name = "Player Size",
     description = "Changes the size of the player."
 ) {
-    private val devSize by BooleanSetting("Dev Size", true, desc = "Toggles client side dev size for your own player.").withDependency { isRandom }
-    private val sizeX by NumberSetting("Size X", 1f, -1.0..3.0, 0.1, desc = "X scale of the dev size.")
-    private val sizeY by NumberSetting("Size Y", 1f, -1.0..3.0, 0.1, desc = "Y scale of the dev size.")
-    private val sizeZ by NumberSetting("Size Z", 1f, -1.0..3.0, 0.1, desc = "Z scale of the dev size.")
-    private var showHidden by DropdownSetting("Show Hidden", desc = "Shows the passcode field for dev features.").withDependency { isRandom }
-    private val passcode by StringSetting("Passcode", "odin", desc = "Passcode for dev features.").withDependency { showHidden && isRandom }
+    private val useClientSize by BooleanSetting("Use Client Size", false, desc = "Uses your client side size values below on yourself instead of your random size.").withDependency { isRandom }
+    private val sizeX by NumberSetting("Size X", 1f, -1.0..3.0, 0.1, desc = "X scale of your client side size.").withDependency { useClientSize || !isRandom }
+    private val sizeY by NumberSetting("Size Y", 1f, -1.0..3.0, 0.1, desc = "Y scale of your client side size.").withDependency { useClientSize || !isRandom}
+    private val sizeZ by NumberSetting("Size Z", 1f, -1.0..3.0, 0.1, desc = "Z scale of your client side size.").withDependency { useClientSize || !isRandom}
+    private var showHidden by DropdownSetting("Show Hidden", desc = "Shows the passcode field for dev features.").withDependency { isRandom && !useClientSize}
+    private val passcode by StringSetting("Passcode", "odin", desc = "Passcode for dev features.").withDependency { showHidden && isRandom && !useClientSize }
 
     const val DEV_SERVER = "https://devs.odtheking.com"
 
@@ -54,10 +54,10 @@ object PlayerSize : Module(
             return@ActionSetting
         }
         OdinMod.scope.launch {
-            modMessage(postData(DEV_SERVER, buildDevBody(mc.user.name, sizeX, sizeY, sizeZ, " ", passcode)).getOrNull())
+            modMessage(postData(DEV_SERVER, buildDevPlayerBody(mc.user.name, sizeX, sizeY, sizeZ, " ", passcode)).getOrNull())
             updateCustomProperties()
         }
-    }.withDependency { isRandom }
+    }.withDependency { isRandom && !useClientSize }
 
 
     var randoms: HashMap<UUID, RandomPlayer> = HashMap()
@@ -74,16 +74,10 @@ object PlayerSize : Module(
     fun preRenderCallbackScaleHook(entityRenderer: AvatarRenderState, matrix: PoseStack) {
         val gameProfile = entityRenderer.getData(GAME_PROFILE_KEY) ?: return
 
-        if (gameProfile.name == mc.player?.gameProfile?.name && !devSize) {
-            if (sizeY < 0) matrix.translate(0f, sizeY * 2, 0f)
-            matrix.scale(sizeX, sizeY, sizeZ)
-            return
-        }
-
-        val random = randoms[gameProfile.id] ?: return
-
-        if (random.scale[1] < 0) matrix.translate(0f, random.scale[1] * 2, 0f)
-        matrix.scale(random.scale[0], random.scale[1], random.scale[2])
+        val (x, y, z) = if (gameProfile.name == mc.player?.gameProfile?.name && (!isRandom || useClientSize) && enabled) Triple(sizeX, sizeY, sizeZ)
+        else randoms[gameProfile.id]?.let { Triple(it.scale[0], it.scale[1], it.scale[2]) } ?: return
+        if (y < 0) matrix.translate(0f, y * 2, 0f)
+        matrix.scale(x, y, z)
     }
 
     suspend fun updateCustomProperties(): String {
@@ -106,9 +100,6 @@ object PlayerSize : Module(
             updateCustomProperties()
         }
     }
-
-    fun buildDevBody(devName: String, sizeX: Float, sizeY: Float, sizeZ: Float, customName: String, password: String): String =
-        buildDevPlayerBody(devName, sizeX, sizeY, sizeZ, customName, password)
 
     @JvmStatic
     val GAME_PROFILE_KEY: RenderStateDataKey<GameProfile> = RenderStateDataKey.create { "odin:game_profile" }

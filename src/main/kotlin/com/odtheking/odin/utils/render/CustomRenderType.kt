@@ -1,14 +1,14 @@
 package com.odtheking.odin.utils.render
 
 import net.minecraft.client.renderer.rendertype.LayeringTransform
-import net.minecraft.client.renderer.rendertype.OutputTarget
 import net.minecraft.client.renderer.rendertype.RenderSetup
-import net.minecraft.resources.Identifier
-import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.client.renderer.rendertype.RenderType
 
+import net.minecraft.resources.Identifier
+import net.minecraft.client.renderer.rendertype.RenderTypes
+
 object CustomRenderType {
-    private val texturedQuadsEsp = java.util.concurrent.ConcurrentHashMap<net.minecraft.resources.Identifier, RenderType>()
+    private val texturedQuadsEsp = java.util.concurrent.ConcurrentHashMap<Identifier, RenderType>()
 
     // RenderTypes.LINES, RenderTypes.LINES_TRANSLUCENT || LINES_ESP, LINES_TRANSLUCENT_ESP
 
@@ -16,14 +16,19 @@ object CustomRenderType {
         "lines-esp",
         RenderSetup.builder(CustomRenderPipelines.LINES_ESP)
             .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-            .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
+            .createRenderSetup()
+    )
+
+    val LINES_TRANSLUCENT_DEPTH: RenderType = RenderType.create(
+        "lines-translucent-depth",
+        RenderSetup.builder(CustomRenderPipelines.LINES_TRANSLUCENT_DEPTH)
+            .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
             .createRenderSetup()
     )
 
     val LINES_TRANSLUCENT_ESP: RenderType = RenderType.create(
         "lines-translucent-esp",
         RenderSetup.builder(CustomRenderPipelines.LINES_TRANSLUCENT_ESP)
-            .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
             .createRenderSetup()
     )
 
@@ -33,6 +38,7 @@ object CustomRenderType {
         "quads-opaque",
         RenderSetup.builder(CustomRenderPipelines.QUADS_OPAQUE)
             .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
+            .sortOnUpload()
             .createRenderSetup()
     )
 
@@ -47,6 +53,7 @@ object CustomRenderType {
     val QUADS_ESP: RenderType = RenderType.create(
         "quads-esp",
         RenderSetup.builder(CustomRenderPipelines.QUADS_ESP)
+            .sortOnUpload()
             .createRenderSetup()
     )
 

@@ -1,13 +1,13 @@
 # Odin for Minecraft 26.2
 
 This branch is an **unofficial Minecraft 26.2 port** of
-[odtheking/Odin](https://github.com/odtheking/Odin). It tracks official 0.3.6 while retaining
+[odtheking/Odin](https://github.com/odtheking/Odin). It tracks upstream main `f2840a0` (0.3.7 development snapshot) while retaining
 this port's existing ClickGUI, controls and HUD editor. It is not affiliated with or endorsed by odtheking.
 
-The 0.3.6 refresh includes the upstream gameplay updates and new standalone waypoint screens.
+The current refresh includes the upstream gameplay updates and new standalone waypoint screens.
 Rendering retains the port's backend-neutral extraction/render-state architecture. The public
-build passes 60 tests; this version has not yet undergone game-launch or live Hypixel validation.
-See [the update audit](FULL_SYNC_AUDIT_0_3_6.md) for details.
+build passes 63 tests; this version has not yet undergone game-launch or live Hypixel validation.
+See [the update audit](FULL_SYNC_AUDIT_2026_10_17.md) for details.
 
 ## Installation
 
@@ -40,7 +40,8 @@ The production JAR is written to `build/libs/`.
 
 ## Upstream synchronization
 
-Current baseline: official **0.3.6** (`833e053`), port version **0.3.6+mc26.2.port.1**.
+Current baseline: upstream main **0.3.7 development snapshot** (`f2840a0`), port version **0.3.7+mc26.2.port.1**.
+Upstream now targets 26.3; this branch continues to target 26.2.
 The existing port ClickGUI and HUD editor are retained.
 
 The `mc-26.2` branch is based on upstream Git history. Upstream changes are reviewed and ported by

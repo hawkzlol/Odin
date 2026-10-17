@@ -14,9 +14,9 @@ class UpstreamSyncRenderLogicTest {
             buildDevPlayerBody("Example", 1.1f, 1.2f, 1.3f, "Custom", "secret"),
         ).asJsonObject
 
-        assertEquals(setOf("devName", "size", "customName", "password"), payload.keySet())
-        assertEquals("Example", payload["devName"].asString)
-        assertEquals(listOf(1.1f, 1.2f, 1.3f), payload["size"].asJsonArray.map { it.asFloat })
+        assertEquals(setOf("DevName", "Size", "CustomName", "Password"), payload.keySet())
+        assertEquals("Example", payload["DevName"].asString)
+        assertEquals(listOf(1.1f, 1.2f, 1.3f), payload["Size"].asJsonArray.map { it.asFloat })
         assertFalse(payload.has("wings"))
         assertFalse(payload.has("wingsColor"))
     }
