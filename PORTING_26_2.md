@@ -284,3 +284,11 @@ our ClickGUI and Numbers Customizer. All 270 upstream files were inventoried; al
 are present and all 73 protected UI files remain unchanged. Core/public clean builds pass
 57/63 tests. No game launch or publication. See `FULL_SYNC_AUDIT_2026_10_17.md` for the
 complete per-file comparison and compatibility decisions.
+
+
+## Official 0.4.0 synchronization (2026-10-29)
+
+Updated to official 0.4.0 (`16e31d0`) while retaining Minecraft 26.2, our ClickGUI/HUD editor
+and Numbers Customizer. All 271 upstream files compared; all 71 modules present.
+Core/public builds pass 62/68 tests. Actual 26.2 Mixin targets inspected; no game launch
+or publication. See `FULL_SYNC_AUDIT_0_4_0.md` for the complete inventory and verification limits.

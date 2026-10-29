@@ -18,6 +18,8 @@ import com.odtheking.odin.features.Module
 import com.odtheking.odin.features.ModuleManager
 import com.odtheking.odin.features.impl.dungeon.map.DungeonMap
 import com.odtheking.odin.utils.*
+import com.odtheking.odin.utils.network.hypixelapi.DEFAULT_HYPIXEL_API_URL
+import com.odtheking.odin.utils.network.hypixelapi.resolveHypixelApiUrl
 import com.odtheking.odin.utils.network.WebUtils.fetchJson
 import com.odtheking.odin.utils.skyblock.LocationUtils
 import com.odtheking.odin.utils.ui.rendering.NVGRenderer
@@ -43,7 +45,8 @@ object ClickGUIModule : Module(
     val clickGUIColor by ColorSetting("Color", Color(50, 150, 220), desc = "The color of the Click GUI.")
     private val action by ActionSetting("Open HUD Editor", desc = "Opens the HUD editor when clicked.") { mc.gui.setScreen(HudManager) }
 
-    val hypixelApiUrl by StringSetting("API URL", "https://api.odtheking.com/hypixel/", 128, "The Hypixel API server to connect to.").hide()
+    private val configuredHypixelApiUrl by StringSetting("API URL", DEFAULT_HYPIXEL_API_URL, 128, "The Hypixel API server to connect to.").hide()
+    val hypixelApiUrl get() = resolveHypixelApiUrl(configuredHypixelApiUrl)
     val webSocketUrl by StringSetting("Socket URL", "wss://ws.odtheking.com/", 128, "The Websocket server to connect to.").hide()
 
     init {

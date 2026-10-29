@@ -9,9 +9,6 @@ import com.odtheking.odin.features.impl.dungeon.dungeonwaypoints.DungeonWaypoint
 import com.odtheking.odin.utils.Color
 import com.odtheking.odin.utils.Color.Companion.multiplyAlpha
 import com.odtheking.odin.utils.addVec
-import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases
-import net.minecraft.client.renderer.feature.TextFeatureRenderer
-import org.joml.Matrix4f
 import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -242,14 +239,7 @@ private fun PoseStack.submitQueuedTexts(
             val formattedText = FormattedCharSequence { output ->
                 StringDecomposer.iterateFormatted(textData.text, Style.EMPTY, output)
             }
-            if (!textData.depth) {
-                submitNodeCollector.submitCustom(SubmitRenderPhases.AFTER_TERRAIN,
-                    TextFeatureRenderer.Submit(
-                        Matrix4f(last().pose()), -textData.width / 2f, 0f, formattedText,
-                        true, Font.DisplayMode.SEE_THROUGH, LightCoordsUtil.FULL_BRIGHT, -1, 0, 0,
-                    ),
-                )
-            } else textCollector.submitText(
+            textCollector.submitText(
                 this,
                 -textData.width / 2f,
                 0f,

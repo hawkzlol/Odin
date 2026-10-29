@@ -5,3 +5,6 @@ accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScr
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
+accessible field net/minecraft/client/player/LocalPlayer xLast D
+accessible field net/minecraft/client/player/LocalPlayer yLast D
+accessible field net/minecraft/client/player/LocalPlayer zLast D
